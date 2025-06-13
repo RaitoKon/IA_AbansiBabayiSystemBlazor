@@ -1,0 +1,341 @@
+﻿@using System.Net.Http.Json
+@using IA_AbansiBabayiSystemBlazor.Data
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.EntityFrameworkCore
+@using IA_AbansiBabayiSystemBlazor.Service
+
+@inject ApplicationDbContext GetTroopLeaderData
+@inject NavigationManager NavigationManager
+@inject TableDataService<TroopLeaderRegistration> TroopService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+@page "/troopLeaderRegistrationRequestsPage"
+@layout Layout.ThemedLayout
+
+<MudDialogProvider />
+<div class="hero-content">
+
+    <MudDataGrid T="TroopLeaderRegistration" MultiSelection="true" RowsPerPage="8" ColumnResizeMode="ResizeMode.Container" Striped="true" Items="@FilteredElements" SortMode="SortMode.Multiple"
+    Filterable="true" QuickFilter="@_quickFilter" Hideable="true" SelectedItems="@GetSelectedItems()" SelectedItemsChanged="SelectedItemsChanged">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Troop Leader Registration</MudText>
+            <MudSpacer />
+            <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+            AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        </ToolBarContent>
+        <Columns>
+            <SelectColumn T="TroopLeaderRegistration"/>
+            <PropertyColumn Property="x => x.LeaderId" Title="First Name" />
+            <TemplateColumn CellClass="d-flex justify-end">           
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudButton Size="@Size.Small"
+                        Variant="@Variant.Filled"
+                        Color="@(delete_switch ? Color.Error : Color.Primary)"
+                        OnClick="@(async () => await (delete_switch ? DeleteSinglePersonAsync(context.Item) : SinglePersonClickedAsync(context.Item)))"
+                        Disabled="@singleButtonDisabled">
+                            @(delete_switch ? "Delete" : "Register")
+                        </MudButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.LeaderFname" Title="First Name"/>
+            <PropertyColumn Property="x => x.LeaderMInitial" Title="M.I" />
+            <PropertyColumn Property="x => x.LeaderLname" Title="Last Name" />
+            <PropertyColumn Property="x => x.LeaderPosition" Title="Position" />
+            <PropertyColumn Property="x => x.LeaderTorNT" Title="T or NT" />
+            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" />
+            <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" />
+            <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" />
+            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" />
+        </Columns>
+        <PagerContent>
+
+            <MudDataGridPager T="TroopLeaderRegistration" Style="color: #25a129ff;" />
+            <div class="pager-addOn">
+                <MudButton Size="@Size.Small"
+                Variant="@Variant.Filled"
+                Color="@(delete_switch ? Color.Error : Color.Primary)"
+                OnClick="@(async () => await (delete_switch ? DeleteMultiplePersonsAsync() : MultiplePersonClickedAsync()))"
+                Disabled="@multipleButtonDisabled">
+                    @(delete_switch ? "Delete" : "Register")
+                </MudButton>
+                <MudSwitch @bind-Value="delete_switch" Label="Delete" LabelPlacement="Placement.Start" Color="Color.Error" />
+            </div>
+        </PagerContent>
+
+    </MudDataGrid>
+
+    <MudMessageBox @ref="_mudMessageBox" Title="@(_isDeleteMode ? "Confirm Deletion" : "Confirm Registration")" CancelText="Cancel">
+        <MessageContent>
+            @if (_isSinglePersonClicked && _selectedPerson is not null)
+            {
+                @if (_isDeleteMode)
+                {
+                    <div>Are you sure you want to <b>delete</b> the request of <b>@_selectedPerson.LeaderFname @_selectedPerson.LeaderLname</b>?</div>
+                }
+                else
+                {
+                    <div>Are you sure you want to <b>register</b> <b>@_selectedPerson.LeaderFname @_selectedPerson.LeaderLname</b> as a Troop Leader?</div>
+                }
+            }
+            else if (_isMultiplePersonsClicked && _selectedItems.Any())
+            {
+                <div style="margin-bottom: 1rem;">
+                    <ul style="margin-left: 1rem;">
+                        @foreach (var person in _selectedItems)
+                        {
+                            <li>@person.LeaderFname @person.LeaderLname</li>
+                        }
+                    </ul>
+
+                    @if (_isDeleteMode)
+                    {
+                        <div>Are you sure you want to <b>delete</b> the selected registration requests?</div>
+                    }
+                    else
+                    {
+                        <div>Are you sure you want to <b>register</b> the selected Troop Leaders?</div>
+                    }
+                </div>
+            }
+        </MessageContent>
+        <YesButton>
+            <MudButton Variant="Variant.Filled"
+            Color="@(_isDeleteMode ? Color.Error : Color.Secondary)"
+            StartIcon="@(_isDeleteMode ? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)"
+            OnClick="async () => await ConfirmActionAsync()">
+                Confirm
+            </MudButton>
+        </YesButton>
+    </MudMessageBox>
+
+</div>
+@code {
+    private bool _isDeleteMode => delete_switch;
+
+    private string _searchString = string.Empty;
+
+    private IEnumerable<TroopLeaderRegistration> FilteredElements =>
+    TroopService.Data?.Where(x => x.LeaderPosition == "Leader") ?? Enumerable.Empty<TroopLeaderRegistration>();
+
+    private HashSet<TroopLeaderRegistration> _selectedItems = new();
+
+    private HashSet<int> _selectedIds = new();
+    private HashSet<TroopLeaderRegistration> GetSelectedItems()
+    {
+        if (TroopService.Data == null) return new();
+        return TroopService.Data.Where(x => _selectedIds.Contains(x.LeaderId)).ToHashSet();
+    }
+
+    private bool _isSinglePersonClicked;
+    private bool _isMultiplePersonsClicked;
+    private MudMessageBox _mudMessageBox;
+    private string _state = "Message box hasn't been opened yet";
+    private TroopLeaderRegistration? _selectedPerson;
+
+    private async Task SinglePersonClickedAsync(TroopLeaderRegistration person)
+    {
+        _selectedPerson = person;
+        _isSinglePersonClicked = true;
+        _isMultiplePersonsClicked = false;
+
+        bool? result = await _mudMessageBox.ShowAsync();
+        _state = result is null
+            ? "Canceled"
+            : $"Registered {_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}";
+        StateHasChanged();
+    }
+
+    private bool multipleButtonDisabled = true;
+    private bool singleButtonDisabled = false;
+
+    private async Task MultiplePersonClickedAsync()
+    {
+
+        if (_selectedItems is null || !_selectedItems.Any())
+            return;
+
+        _isSinglePersonClicked = false;
+        _isMultiplePersonsClicked = true;
+
+        bool? result = await _mudMessageBox.ShowAsync();
+        _state = result is null
+            ? "Canceled"
+            : $"Registered {string.Join(", ", _selectedItems.Select(p => $"{p.LeaderFname} {p.LeaderLname}"))}";
+        StateHasChanged();
+
+    }
+
+
+    private async Task DeleteSinglePersonAsync(TroopLeaderRegistration person)
+    {
+        _selectedPerson = person;
+        _isSinglePersonClicked = true;
+        _isMultiplePersonsClicked = false;
+
+        bool? result = await _mudMessageBox.ShowAsync();
+        _state = result is null
+            ? "Canceled"
+            : $"{(_isDeleteMode ? "Deleted" : "Registered")} {_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}";
+
+        StateHasChanged();
+    }
+
+    private async Task DeleteMultiplePersonsAsync()
+    {
+        if (_selectedItems is null || !_selectedItems.Any())
+            return;
+
+        _isSinglePersonClicked = false;
+        _isMultiplePersonsClicked = true;
+
+        bool? result = await _mudMessageBox.ShowAsync();
+        _state = result is null
+            ? "Canceled"
+            : $"{(_isDeleteMode ? "Deleted" : "Registered")} {string.Join(", ", _selectedItems.Select(p => $"{p.LeaderFname} {p.LeaderLname}"))}";
+        StateHasChanged();
+    }
+
+    void SelectedItemsChanged(HashSet<TroopLeaderRegistration> selected)
+    {
+        _selectedItems = selected;
+        _selectedIds = selected.Select(i => i.LeaderId).ToHashSet();
+        multipleButtonDisabled = !_selectedItems.Any();
+        singleButtonDisabled = _selectedItems.Any();
+    }
+
+    // Quick Filter function
+    private Func<TroopLeaderRegistration, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        return (x.LeaderFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.LeaderLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.LeaderEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.LeaderPosition?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TroopService.LoadDataAsync();
+        TroopService.OnChanged += HandleDataChanged;
+
+    }
+
+    private void HandleDataChanged()
+    {
+        if (TroopService.Data != null)
+        {
+            _selectedItems = TroopService.Data
+                .Where(x => _selectedIds.Contains(x.LeaderId))
+                .ToHashSet();
+        }
+
+        InvokeAsync(StateHasChanged); // Refresh UI when data changes
+    }
+
+    public void Dispose()
+    {
+        // Clean up event subscription to prevent memory leaks
+        TroopService.OnChanged -= HandleDataChanged;
+    }
+
+    public bool delete_switch { get; set; } = false;
+
+    private async Task RegisterPerson(TroopLeaderRegistration person)
+    {
+        var registeredLeader = new RegisteredTroopLeader
+
+			{
+				LeaderFname = person.LeaderFname,
+				LeaderMInitial = person.LeaderMInitial,
+				LeaderLname = person.LeaderLname,
+				LeaderPosition = person.LeaderPosition,
+                LeaderRole = person.LeaderRole,
+				LeaderTorNT = person.LeaderTorNT,
+				LeaderRegStatus = person.LeaderRegStatus,
+				LeaderBirthdate = person.LeaderBirthdate,
+				LeaderBeneficiary = person.LeaderBeneficiary,
+				LeaderEmail = person.LeaderEmail,
+                AuthRoleId = 2,
+			};
+
+
+        GetTroopLeaderData.RegisteredTroopLeaders.Add(registeredLeader);
+
+        var toDelete = await GetTroopLeaderData.TroopLeaders
+        .FirstOrDefaultAsync(x => x.LeaderId == person.LeaderId);
+
+        if (toDelete is not null)
+        {
+            GetTroopLeaderData.TroopLeaders.Remove(toDelete);
+        }
+
+        TroopService.Delete(person);
+
+        await GetTroopLeaderData.SaveChangesAsync();
+
+        Snackbar.Add($"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been registered successfully!", Severity.Success);
+
+    }
+
+    private async Task DeletePerson(TroopLeaderRegistration person)
+    {
+
+        var toDelete = await GetTroopLeaderData.TroopLeaders
+       .FirstOrDefaultAsync(x => x.LeaderId == person.LeaderId);
+
+        if (toDelete is not null)
+        {
+            GetTroopLeaderData.TroopLeaders.Remove(toDelete);
+        }
+
+        TroopService.Delete(person);
+
+        await GetTroopLeaderData.SaveChangesAsync();
+
+        Snackbar.Add($"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been removed successfully!", Severity.Success);
+    }
+
+    private async Task ConfirmActionAsync()
+    {
+        if (_isDeleteMode)
+        {
+            if (_isSinglePersonClicked && _selectedPerson is not null)
+            {
+                await DeletePerson(_selectedPerson);
+            }
+            else if (_isMultiplePersonsClicked && _selectedItems.Any())
+            {
+                foreach (var person in _selectedItems.ToList())
+                {
+                    await DeletePerson(person);
+                }
+            }
+        }
+        else
+        {
+            if (_isSinglePersonClicked && _selectedPerson is not null)
+            {
+                await RegisterPerson(_selectedPerson); // Don't delete again
+            }
+            else if (_isMultiplePersonsClicked && _selectedItems.Any())
+            {
+                foreach (var person in _selectedItems.ToList())
+                {
+                    await RegisterPerson(person); // Don't delete again
+                }
+            }
+        }
+
+        _isSinglePersonClicked = false;
+        _isMultiplePersonsClicked = false;
+    }
+
+
+}
+

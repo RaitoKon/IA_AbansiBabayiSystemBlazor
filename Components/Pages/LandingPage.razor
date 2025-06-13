@@ -1,0 +1,225 @@
+﻿
+@page "/landingPage"
+
+@layout Layout.BlankLayout
+
+@using Microsoft.AspNetCore.Identity
+@using IA_AbansiBabayiSystemBlazor.Data;
+@using IA_AbansiBabayiSystemBlazor.Data.Models;
+@using IA_AbansiBabayiSystemBlazor.Service;
+@using Microsoft.EntityFrameworkCore
+
+@inject ILogger<LandingPage> Logger
+@inject NavigationManager NavigationManager
+@inject UserSessionService UserSession
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory 
+@inject IJSRuntime JS
+@inject PassedDataRoute PassedDataRoute
+
+<!DOCTYPE html>
+
+<div class="page-wrapper">
+    <div class="log-in-form @(showLoginForm ? "log-in-form-visible" : "log-in-form")">
+        <div class="log-in-form-card">
+            <container class="column1">
+                <div class="left-card">
+                    <p class="login-form-welcome-text">Welcome Back!</p>
+                    <p class="login-form-p">Please Sign in to your account.</p>
+                </div>
+            </container>
+            <container class="column2">
+
+                @if (currentCard == "login-card")
+                {
+                    <div class="right-card">
+                        <div class="form-setup">
+                            <h2 class="login-title">Login</h2>
+
+                                <input type="text" @bind="loginModel.Email" class="input-username" placeholder="Email" />
+
+                                <input type="password" @bind="loginModel.Password" class="input-password" placeholder="Password" />
+                 
+                            @if (!string.IsNullOrEmpty(loginError))
+                            {
+                                <div class="error-message-container">
+                                    <p class="error-message">@loginError</p>
+                                </div>
+                            }
+                           
+                            <button type="button" @onclick="HandleLogin" class="green-button">Login</button>
+                            <button type="button" @onclick="CancelRegistration" class="dimgray-button">Close</button>
+
+                            <p class="register-prompt">Don't have an account?</p>
+                            <button type="button" @onclick="ShowScoutLevel" class="green-button">Register here</button>
+                        </div>
+                    </div>
+                }
+
+                @if (currentCard == "selectScoutLevel-card")
+                {
+                    <div class="right-card-register">
+                        <button class="scout-btn twinklers" @onclick="@(() => SelectedScoutLevel("Twinklers"))">TWINKLERS</button>
+                        <button class="scout-btn star" @onclick="@(() => SelectedScoutLevel("Star"))">STAR</button>
+                        <button class="scout-btn junior" @onclick="@(() => SelectedScoutLevel("Junior"))">JUNIOR</button>
+                        <button class="scout-btn senior" @onclick="@(() => SelectedScoutLevel("Senior"))">SENIOR</button>
+                        <button class="scout-btn cadet" @onclick="@(() => SelectedScoutLevel("Cadet"))">CADET</button>
+                        <button class="scout-btn troop-leader" @onclick="@(() => SelectedScoutLevel("Troop Leader"))">TROOP LEADER</button>
+                    </div>
+                }
+
+                @if (currentCard == "selectStatus-card")
+                {
+                    <div class="right-card-register2">
+                        <h1>ARE YOU</h1>
+                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("Re-Register"))">Re - Register</button>
+                        <h1>OR</h1>
+                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("New"))">New</button>
+
+                        <button type="button" class="dimgray-button" style="margin-top: 1.5rem;" @onclick="CancelRegistration">Cancel</button>
+                    </div>
+                }
+
+            </container>
+
+        </div>
+
+    </div>
+    <div class="body-LoginNoEffect @(showBodyEffect ? "body-showingEffect" : "body-loginNoEffect")">
+        <nav class="navigation">
+            <div class="nav-bg">
+                <div class="nav-left">
+                    <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
+                    <div class="nav-links">
+                        <img src="icons/Menu.svg" alt="Menu" class="menu-icon">
+                        <a href="#" class="nav-link">HOME</a>
+                        <a href="#" class="nav-link">BADGES</a>
+                        <a href="#" class="nav-link">TROOP<br>LOCATOR</a>
+                    </div>
+                </div>
+                <button class="sign-in-btn" @onclick="ToggleLoginForm">SIGN IN</button>
+            </div>
+        </nav>
+
+        <header class="hero">
+
+            <img src="@backgroundImage" alt="Background" class="hero-bg" style="opacity: @imageOpacity; transition: opacity 0.5s ease-in-out;">
+            <section class="dropdown-section">
+                <div class="dropdown-links" @onclick="ToggleDropDown">
+                    REGISTER AS A SCOUT NOW!
+                    <img src="icons/dropdown.svg" alt="dropdown-button" class="dropdown-icon">
+                </div>
+                <div class="dropdown-content @(showDropDown ? "dropdown-content-show" : "dropdown-content")" @onmouseleave="ResetBackground">
+                    <button class="scout-btn twinklers" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Twinklers.png"))" @onclick="@(() => SelectedScoutLevel("Twinklers"))">TWINKLERS</button>
+                    <button class="scout-btn star" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Star.png"))" @onclick="@(() => SelectedScoutLevel("Star"))">STAR</button>
+                    <button class="scout-btn junior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Junior.png"))" @onclick="@(() => SelectedScoutLevel("Junior"))">JUNIOR</button>
+                    <button class="scout-btn senior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Senior.png"))" @onclick="@(() => SelectedScoutLevel("Senior"))">SENIOR</button>
+                    <button class="scout-btn cadet" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Cadet.png"))" @onclick="@(() => SelectedScoutLevel("Cadet"))">CADET</button>
+                </div>
+            </section>
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h2 class="welcome-text">Welcome to,</h2>
+                    <h1 class="main-title">
+                        <span class="text-shadow">ILOILO<br>GIRL<br>SCOUT<br>COUNCIL</span>
+                        <span class="gradient">ILOILO<br>GIRL<br>SCOUT<br>COUNCIL</span>
+                    </h1>
+
+                </div>
+                <div>
+                    <img src="images/BG-Vector.png" alt="Background" class="vector-image">
+                </div>
+            </div>
+        </header>
+
+        <section class="programs-grid">
+            <article class="program-card camps">
+                <h3 class="program-title">Camps</h3>
+                <p class="program-description">
+                    Camping provides adventures that prepare Girl Scouts for life. Camps
+                    develop positive values, leadership, friendliness, and willingness to
+                    serve.
+                </p>
+            </article>
+
+            <article class="program-card program">
+                <h3 class="program-title">Program</h3>
+                <p class="program-description">
+                    The GSP Program provides space for a girl to maximize her fullest
+                    potential to become a responsible and productive member of society.
+                </p>
+            </article>
+
+            <article class="program-card training">
+                <h3 class="program-title">Training</h3>
+                <p class="program-description">
+                    Adult members receive opportunities to be trained and empowered as human
+                    resource base for the Organization.
+                </p>
+            </article>
+
+            <article class="program-card membership">
+                <h3 class="program-title">Membership</h3>
+                <p class="program-description">
+                    Girls, young women, and adults who believe in Girl Scouting and accept
+                    the principles embodied in the Girl Scout Promise and Law are welcome to
+                    be members of GSP.
+                </p>
+            </article>
+        </section>
+        <div class="separator"></div>
+        <div class="main-content">
+            <div class="second-background"></div>
+            <section class="news-section">
+                <div class="news-content">
+                    <div class="news-image-side-wrapper">
+                        <div class="news-image-wrapper">
+                            <img src="images/News1.jpg"
+                                 alt="Group photo"
+                                 class="news-image" />
+                        </div>
+                    </div>
+                    <div class="news-text-side-wrapper">
+                        <article class="news-text">
+                            <h2 class="news-title">GSP Iloilo Council</h2>
+                            <p class="news-description">
+                                Earlier today, the museum was filled with these Twinklers, Stars,
+                                Juniors, Seniors and Cadets of the Girl Scouts of the Philippines
+                                -Iloilo Council. These Ilongga Scouts were able to gain knowledge of
+                                the rich economic History of the country as well as appreciating
+                                various historical and significant landmarks in the City.
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                Earlier today, the museum was filled with these Twinklers, Stars,
+                                Juniors, Seniors and Cadets of the Girl Scouts of the Philippines
+                                -Iloilo Council. These Ilongga Scouts were able to gain knowledge of
+                                the rich economic History of the country as well as appreciating
+                                various historical and significant landmarks in the City.
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                <br>
+                                <br>
+                            </p>
+                            <a href="#" class="see-more">Read more...</a>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <footer class="footer">
+            <p class="footer-text">Powered by <strong>ABANSIBABAYI</strong></p>
+        </footer>
+    </div>
+</div>
+

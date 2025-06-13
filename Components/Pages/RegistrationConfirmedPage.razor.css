@@ -1,0 +1,156 @@
+﻿.page-wrapper {
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.hero-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25em 2.5em;
+    position: relative;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 1450px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    z-index: 3;
+}
+
+.nav-bg {
+    align-items: center;
+    background: linear-gradient(42deg,rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 100%);
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    width: 100%;
+    border-radius: 33px;
+}
+
+.nav-left {
+    display: flex;
+    gap: 1em;
+}
+
+.nav-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    object-fit: contain;
+    overflow: hidden;
+    margin-left: 5rem;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+}
+
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 9.3rem;
+    height: 3rem;
+    text-align: center;
+    overflow: hidden;
+    color: #254A2A;
+    font-family: "Sora", sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .nav-link:hover,
+    .nav-link:focus {
+        color: white;
+    }
+
+.registration-section {
+    max-width: 1440px;
+}
+
+.registration-placeholder {
+    display: flex;
+    justify-content: center;
+    padding-block: 2rem;
+    padding-inline: 3rem;
+}
+
+.registration-placeholder-left {
+    justify-items: center;
+    width: 67%;
+    padding-inline: 3rem;
+    padding-block: 2rem;
+    height: 40rem;
+    flex-shrink: 0;
+    border-radius: 1.56rem 0rem 0rem 1.56rem;
+    border: 1px solid #FFF;
+    background: linear-gradient(96deg, rgba(255, 255, 255, 0.33) -21.67%, rgba(255, 255, 255, 0.09) 75.46%);
+    background-blend-mode: exclusion, normal;
+    box-sizing: border-box;
+}
+
+    .registration-placeholder-left h1 {
+        font-family: Figtree;
+        font-size: 3rem;
+        font-weight: 800;
+        color: #254A2A;
+        margin: 0;
+    }
+
+    .registration-placeholder-left p {
+        font-family: Figtree;
+        color: #254A2A;
+        margin: 0.5rem;
+        text-align: center;
+    }
+
+.registration-placeholder-right {
+    width: 27%;
+    height: 40rem;
+    flex-shrink: 0;
+    border-radius: 0rem 1.56rem 1.56rem 0rem;
+    border: 1px solid #FFF;
+    background: linear-gradient(-100deg, rgba(255, 255, 255, 0.82) -21.67%, rgba(255, 255, 255, 0.39) 75.46%);
+}
+
+.registration-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    gap: 3rem;
+    padding-bottom: 3rem;
+    box-sizing: border-box;
+}
+
+.green-button {
+    width: 30%;
+    height: 3rem;
+    color: white;
+    background-color: darkgreen;
+    border: none;
+    border-radius: 7px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+    .green-button:hover {
+        background-color: #254A2A;
+    }

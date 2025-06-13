@@ -1,0 +1,235 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Service
+@using Microsoft.JSInterop
+@using IA_AbansiBabayiSystemBlazor.Data
+@using Microsoft.EntityFrameworkCore
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject PassedDataRoute PassedDataRoute
+@inject ApplicationDbContext AppDbContext
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+
+
+@page "/registrationPage"
+
+<!DOCTYPE html>
+
+
+<div class="page-wrapper">
+    <img src="images/BG-Base1.png" alt="Background" class="hero-bg">
+    <section>
+        <nav class="navigation">
+            <div class="nav-bg">
+                <div class="nav-left">
+                    <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">HOME</a>
+                        <a href="#" class="nav-link">BADGES</a>
+                        <a href="#" class="nav-link">TROOP<br>LOCATOR</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </section>
+
+    <section class="registration-section">
+        <div class="registration-placeholder">
+            <div class="registration-placeholder-left">
+                <div class="registration-content">
+                    <form class="registration-form">
+                        <div class="upper-registration-form">
+                            <h1> Register to IGSC Website</h1>
+                            <p>Already have an account?<b>Sign in</b></p>
+
+                            <div class="registration-dropdown" @onclick="ToggleRegistrationDropdown">
+                                <p>@(string.IsNullOrEmpty(currentRole) ? "Chosen Role" : currentRole)</p>
+                                <input type="text" value="@currentRole" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
+                                <img src="icons/dropdown.svg" alt="Registration Dropdown Button" class="dropdown-button" />
+                            </div>
+
+                            <div class="registration-dropdown-toggle">
+                                <div class="registration-dropdown-menu @(toggleRegistrationDropdown ? "registration-dropdown-menu-on" : "") ">
+                                    <div class="registration-dropdown-choices">
+                                        <button type="button" class="scout-btn twinklers" @onclick="@(() => SelectedRole("Twinklers"))">TWINKLERS</button>
+                                        <button type="button" class="scout-btn star" @onclick="@(() => SelectedRole("Star"))">STAR</button>
+                                        <button type="button" class="scout-btn junior" @onclick="@(() => SelectedRole("Junior"))">JUNIOR</button>
+                                        <button type="button" class="scout-btn senior" @onclick="@(() => SelectedRole("Senior"))">SENIOR</button>
+                                        <button type="button" class="scout-btn cadet" @onclick="@(() => SelectedRole("Cadet"))">CADET</button>
+                                        <button type="button" class="scout-btn troop-leader" @onclick="@(() => SelectedRole("Troop Leader"))">TROOP LEADER</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (currentRole == "Troop Leader")
+                        {
+                            <div class="input-grid">
+                                <!-- Full-width  -->
+                                <div class="grid-row1">
+                                    <div class="input-dropdown-toggle">
+                                        <div class="input-dropdown" @onclick="TogglePositionDropdown">
+                                            <p>@(string.IsNullOrEmpty(currentPosition) ? "Position" : currentPosition)</p>
+                                            <img src="icons/dropdown.svg" alt="Position Dropdown Button" class="dropdown-button" />
+                                                                    @* CurrentPostition *@
+                                            <input type="text" value="@currentPosition" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
+
+                                        </div>
+
+                                        <div class="input-dropdown-menu @(togglePositionDropdown ? "input-dropdown-menu-on" : "") ">
+                                            <div class="input-dropdown-choices">
+                                                <button type="button" @onclick="@(() => SelectedPosition("Leader"))">LEADER</button>
+                                                <button type="button" @onclick="@(() => SelectedPosition("Co - Leader"))">CO - LEADER</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="input-dropdown-toggle">
+                                        <div class="input-dropdown" @onclick="ToggleTorNTDropdown">
+                                            <p>@(string.IsNullOrEmpty(currentTorNT) ? "T or NT" : currentTorNT)</p>
+                                            <img src="icons/dropdown.svg" alt="TorNT Dropdown Button" class="dropdown-button" />
+											                        @* CurrentTorNT *@
+                                            <input type="text" value="@currentTorNT" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
+                                        </div>
+
+                                        <div class="input-dropdown-menu @(toggleTorNTDropdown ? "input-dropdown-menu-on" : "") ">
+                                            <div class="input-dropdown-choices">
+                                                <button type="button" @onclick="@(() => SelectedTorNT("T"))">T</button>
+                                                <button type="button" @onclick="@(() => SelectedTorNT("NT"))">NT</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (currentPosition == "Co - Leader")
+                                    {
+                                                                                         @*currentTroopNumber *@
+                                        <input type="text" placeholder="Troop Number" @bind="currentTroopNumber" required />
+                                    }
+
+                                </div>
+
+                                <!-- Name row -->
+                                <div class="grid-row">
+                                                            @* CurrentFname *@
+                                    <input type="text" @bind="currentFname" placeholder="First Name" required />
+                                                            @* CurrentMInitial *@
+                                    <input type="text" @bind="currentMInitial" placeholder="Initial" required />
+                                                            @* CurrentLname *@
+                                    <input type="text" @bind="currentLname" placeholder="Last Name" required />
+                                </div>
+
+                                <!-- Age & Birthdate -->
+                                <div class="grid-row">
+                                                             @* CurrentBirthdate *@
+                                    <input type="text" @bind="currentBirthDate" placeholder="Birth Date (mm/dd/yy)" required />
+
+                                    <div class="input-dropdown-toggle">
+                                        <div class="input-dropdown" @onclick="ToggleStatusDropdown">
+                                            <p>@(string.IsNullOrEmpty(currentStatus) ? "Status" : currentStatus)</p>
+                                            <img src="icons/dropdown.svg" alt="Status Dropdown Button" class="dropdown-button" />
+                                                                    @* CurrentStatus *@
+                                            <input type="text" value="@currentStatus" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
+                                        </div>
+
+                                        <div class="input-dropdown-menu @(toggleStatusDropdown ? "input-dropdown-menu-on" : "") ">
+                                            <div class="input-dropdown-choices">
+                                                <button type="button" @onclick="@(() => SelectedStatus("Re - Register"))">RE - REGISTER</button>
+                                                <button type="button" @onclick="@(() => SelectedStatus("New"))">NEW</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Grade & Status -->
+                                <div class="grid-row">
+                                                           @* currentBeneficiary *@
+                                    <input type="text" @bind="currentBeneficiary" placeholder="Beneficiary" required />
+                                                            @* currentEmail *@
+                                    <input type="text" @bind="currentEmail" placeholder="Email" />
+
+                                </div>
+
+                            </div>
+                        }
+
+                        else
+                        {
+
+
+                            <div class="input-grid">
+                                <!-- Full-width Troop Number -->
+                                <div class="grid-row1">
+
+                                    @if(currentStatus == "Re-Register"){
+                                                                @* currentScoutNumber *@
+                                     <input type="text" placeholder="Scout Number" @bind="currentScoutNumber" required />
+                                    }
+                                                               @* currentToopNumber *@
+                                    <input type="text" placeholder="Troop Number" required />
+                                </div>
+
+                                <!-- Name row -->
+                                <div class="grid-row">
+                                    <input type="text" placeholder="First Name" required />
+                                    <input type="text" placeholder="Middle Initial" required />
+                                    <input type="text" placeholder="Last Name" required />
+                                </div>
+
+                                <!-- Age & Birthdate -->
+                                <div class="grid-row">
+                                    <input type="text" placeholder="Age" required />
+                                    <input type="text" placeholder="Birth Date (mm/dd/yy)" required />
+                                    <input type="text" placeholder="Grade" style="width: 40%;" required />
+                                </div>
+
+                                <!-- Grade & Status -->
+                                <div class="grid-row">
+                                    <div class="input-dropdown-toggle">
+                                        <div class="input-dropdown" @onclick="ToggleStatusDropdown" required>
+                                            <p>@(string.IsNullOrEmpty(currentStatus) ? "Status" : currentStatus)</p>
+                                            <img src="icons/dropdown.svg" alt="Status Dropdown Button" class="dropdown-button" />
+                                            <input type="text" value="@currentStatus" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
+                                        </div>
+
+                                        <div class="input-dropdown-menu @(toggleStatusDropdown ? "input-dropdown-menu-on" : "") ">
+                                            <div class="input-dropdown-choices">
+                                                <button type="button" class="scout-btn twinklers" @onclick="@(() => SelectedStatus("Re-Register"))">RE - REGISTER</button>
+                                                <button type="button" class="scout-btn star" @onclick="@(() => SelectedStatus("New"))">NEW</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <input type="text" placeholder="Beneficiary" required />
+
+                                </div>
+
+                                <!-- Beneficiary & Email -->
+                                <div class="grid-row">
+                                    <input type="text" placeholder="Contact No." required />
+                                    <input type="text" placeholder="Email" />
+                                </div>
+                            </div>
+
+                        }
+
+
+                        <div>
+                            <button type="button" @onclick="SubmitRegistration" class="green-button">Submit</button>
+                            <button type="button" @onclick="CancelRegistration" class="dimgray-button">Cancel</button>
+                            <p>@errorMessage</p>
+                            <p>@successMessage</p>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+            <div class="registration-placeholder-right">
+            </div>
+        </div>
+    </section>
+</div>
+
+
+
+
+

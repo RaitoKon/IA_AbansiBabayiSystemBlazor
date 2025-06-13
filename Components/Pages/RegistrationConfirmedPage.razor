@@ -1,0 +1,67 @@
+﻿
+
+@inject NavigationManager NavigationManager
+
+
+
+@page "/registrationConfirmedPage"
+
+<!DOCTYPE html>
+
+
+<div class="page-wrapper">
+    <img src="images/BG-Base1.png" alt="Background" class="hero-bg">
+    <section>
+        <nav class="navigation">
+            <div class="nav-bg">
+                <div class="nav-left">
+                    <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">HOME</a>
+                        <a href="#" class="nav-link">BADGES</a>
+                        <a href="#" class="nav-link">TROOP<br>LOCATOR</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </section>
+
+    <section class="registration-section">
+        <div class="registration-placeholder">
+            <div class="registration-placeholder-left">
+                <div class="registration-content">
+                    <div style="display:flex; flex-direction: column; align-items: center; height;">
+                        <img src="icons/check_circle.png" alt="check_circle_icon" style="height: 10rem; width: 10rem;" />
+                        <h1>Registration Complete!</h1>
+                    </div>
+                    <p>
+                        <b>PLEASE NOTE:</b>
+                        <br/>
+                        <br/>
+                        You have now successfully sent a registration request. Please wait for the Iloilo Girl Scout admin's confirmation. 
+                        <u>Your account details will be sent to the email address you provided.</u>
+                    </p>
+                    <button type="button" @onclick="BackButton" class="green-button">Go back</button>
+                </div>
+            </div>
+            <div class="registration-placeholder-right">
+
+            </div>
+        </div>
+    </section>
+</div>
+
+@code{
+
+    private void BackButton(){
+
+        NavigationManager.NavigateTo("/landingPage");
+
+    }
+    
+}
+
+
+
+
+

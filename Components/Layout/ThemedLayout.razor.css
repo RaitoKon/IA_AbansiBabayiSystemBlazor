@@ -1,0 +1,28 @@
+﻿
+* {
+}
+
+.drawer-title {
+    height: 5rem;
+    display: flex;
+    padding: 1rem;
+    align-items: center;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 1rem;
+    border-radius: 10px;
+    gap: 0.3rem;
+    line-height: 1;
+    color: #254A2A;
+}
+
+    .drawer-title h1 {
+        font-family: 'LEMON MILK';
+        font-size: 1rem;
+    }
+
+    .drawer-title p {
+        font-size: 0.7rem;
+        font-family: 'Sora';
+    }

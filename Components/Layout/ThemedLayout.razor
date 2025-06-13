@@ -1,0 +1,74 @@
+﻿@inherits LayoutComponentBase
+@using IA_AbansiBabayiSystemBlazor.Components.Themes
+@using IA_AbansiBabayiSystemBlazor.Service
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject UserSessionService UserSessionService
+
+<MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
+   <MudSnackbarProvider MaxDisplayedSnackbars="3" Position="SnackbarPosition.TopCenter" />
+    <MudPopoverProvider />
+
+    <MudLayout>
+        <MudDrawer Open="true" Elevation="3" Style="background-color:#F5F5F5;">
+            <div class="drawer-title">
+                <MudImage Src="images/GIRL SCOUT LOGO.png" Alt="Girl Scout Logo" FallbackSrc="images/mony.jpg" Style="height:3rem; width:auto;" />
+                <div>
+                    <h1>AbansiBabayi</h1>
+                    <p>Iloilo Girl Scout Council</p>
+                </div>
+            </div>
+
+            <MudPaper Width="240px" Class="py-3" Elevation="1">
+                <MudNavMenu>
+                    <MudText Typo="Typo.h6" Class="px-4" Color="Color.Primary">Admin Dashboard</MudText>
+                    <MudText Typo="Typo.body2" Class="px-4 mud-text-secondary">See your dashboard below</MudText>
+                    <MudDivider Class="my-2" />
+                    <MudNavGroup Title="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
+                        <MudNavGroup Title="Manage Troop Leader" Icon="@Icons.Material.Filled.PersonAdd">
+                            <MudNavLink Href="/troopLeaderRegistrationRequestsPage" Icon="@Icons.Material.Filled.GroupAdd">Registration Requests</MudNavLink>
+                            <MudNavLink Href="/troopLeaderDashboardPage" Icon="@Icons.Material.Filled.Groups">Troop Dashboard</MudNavLink>
+                        </MudNavGroup>
+                        <MudNavGroup Title="Event Registration" Icon="@Icons.Material.Filled.AppRegistration">
+                            Dashboard
+                        </MudNavGroup>
+                        <MudNavGroup Title="Troop Information" Icon="@Icons.Material.Filled.AccountBox">
+                            Dashboard
+                        </MudNavGroup>
+                    </MudNavGroup>
+                </MudNavMenu>
+            </MudPaper>
+        </MudDrawer>
+
+        <MudAppBar Fixed="false" Style="height: 3rem;" Color="Color.Primary">
+            <MudSpacer />
+            <MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopRight">
+                <ActivatorContent>
+                    <MudAvatar>
+                        <MudImage Src="images/default-scout-avatar.jpg" />
+                    </MudAvatar>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Label="Profile" />
+                    <MudDivider />
+                    <MudMenuItem Label="Logout" OnClick="Logout" />
+                </ChildContent>
+            </MudMenu>
+        </MudAppBar>
+
+        <MudMainContent Style="background-color: #F5F5F5; padding: 0;">
+            @Body
+        </MudMainContent>
+    </MudLayout>
+
+@code {
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("sessionStorage.clear");
+        UserSessionService.ClearUser();
+        NavigationManager.NavigateTo("/landingPage");
+    }
+}
