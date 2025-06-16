@@ -1,11 +1,15 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
+using static System.Net.WebRequestMethods;
+using System.Net.Http;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.Identity;
+using MudBlazor;
+using Azure;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.JSInterop;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.EntityFrameworkCore.Internal;
 
 namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 {
@@ -13,45 +17,46 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
     {
 
         private LoginModel loginModel = new();
+        private string errorMessage;
 
         public class LoginModel
         {
-            [Required(ErrorMessage = "Email is required")]
-            [EmailAddress(ErrorMessage = "Invalid email")]
+            [Required]
             public string Email { get; set; }
-
-            [Required(ErrorMessage = "Password is required")]
+            [Required]
             public string Password { get; set; }
         }
-
-        private string loginError = "";
-        private async Task HandleLogin()
+        private async Task LoginAsync()
         {
-            loginError = "";
+            errorMessage = ""; // clear previous message
 
-            if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
+            var formData = new MultipartFormDataContent
+        {
+            { new StringContent(loginModel.Email), "email" },
+            { new StringContent(loginModel.Password), "password" }
+        };
+
+            var response = await Http.PostAsync("/auth/login", formData);
+
+            if (response.IsSuccessStatusCode)
             {
-                loginError = "Email and password are required.";
-                return;
-            }
-
-            await using var db = DbContextFactory.CreateDbContext();
-            var user = await db.Logins.FirstOrDefaultAsync(u => u.Email == loginModel.Email && u.Password == loginModel.Password);
-
-            if (user != null)
-            {
-                // Save data to sessionStorage
-                await JS.InvokeVoidAsync("sessionStorage.setItem", "userId", user.UserId.ToString());
-                await JS.InvokeVoidAsync("sessionStorage.setItem", "userEmail", user.Email);
-                await JS.InvokeVoidAsync("sessionStorage.setItem", "userRole", user.AuthRoleId);
-
-                Logger.LogInformation("User logged in.");
-                NavigationManager.NavigateTo("/userPage");
+                var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                if (result != null && result.TryGetValue("redirectUrl", out var url))
+                {
+                    NavigationManager.NavigateTo(url, forceLoad: true);
+                }
             }
             else
             {
-                loginError = "Invalid email or password.";
-                Logger.LogWarning("Invalid login attempt.");
+                try
+                {
+                    var error = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                    errorMessage = error?["message"] ?? "Login failed.";
+                }
+                catch
+                {
+                    errorMessage = "Login failed. Unexpected error.";
+                }
             }
         }
 
@@ -60,11 +65,11 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 
         private void ToggleLoginForm()
         {
-            loginModel = new LoginModel();       // Reset the input fields
-            loginError = string.Empty;
-
             showLoginForm = !showLoginForm;
             showBodyEffect = !showBodyEffect;
+
+            Console.WriteLine("TOGGLE LOGIN CLICKED");
+            Logger.LogWarning("TOGGLE LOGIN CLICKED");
         }
 
         private bool showDropDown = false;

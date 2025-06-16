@@ -1,4 +1,5 @@
 ﻿
+@page "/"
 @page "/landingPage"
 
 @layout Layout.BlankLayout
@@ -9,17 +10,21 @@
 @using IA_AbansiBabayiSystemBlazor.Service;
 @using Microsoft.EntityFrameworkCore
 
+@inject HttpClient Http
 @inject ILogger<LandingPage> Logger
 @inject NavigationManager NavigationManager
-@inject UserSessionService UserSession
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory 
-@inject IJSRuntime JS
 @inject PassedDataRoute PassedDataRoute
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <!DOCTYPE html>
 
 <div class="page-wrapper">
-    <div class="log-in-form @(showLoginForm ? "log-in-form-visible" : "log-in-form")">
+    <div class="log-in-form @(showLoginForm ? "log-in-form-visible" : "")">
         <div class="log-in-form-card">
             <container class="column1">
                 <div class="left-card">
@@ -32,26 +37,26 @@
                 @if (currentCard == "login-card")
                 {
                     <div class="right-card">
-                        <div class="form-setup">
-                            <h2 class="login-title">Login</h2>
 
-                                <input type="text" @bind="loginModel.Email" class="input-username" placeholder="Email" />
+                            <div class="form-setup">
+                                <h2 class="login-title">Login</h2>
 
-                                <input type="password" @bind="loginModel.Password" class="input-password" placeholder="Password" />
-                 
-                            @if (!string.IsNullOrEmpty(loginError))
-                            {
-                                <div class="error-message-container">
-                                    <p class="error-message">@loginError</p>
-                                </div>
-                            }
-                           
-                            <button type="button" @onclick="HandleLogin" class="green-button">Login</button>
-                            <button type="button" @onclick="CancelRegistration" class="dimgray-button">Close</button>
+                                <input type="text" @bind="loginModel.Email" class="input-username" placeholder="Email" autocomplete="username" />
+                                <input type="password" @bind="loginModel.Password" class="input-password" placeholder="Password" autocomplete="current-password" />
+
+                                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                                {
+                                    <div class="error-message">@errorMessage</div>
+                                }
+
+                                <button type="submit" @onclick="LoginAsync" class="green-button">Login</button>
+                                <button type="button" @onclick="CancelRegistration" class="dimgray-button">Close</button>
+                            </div>
 
                             <p class="register-prompt">Don't have an account?</p>
+                            <br />
                             <button type="button" @onclick="ShowScoutLevel" class="green-button">Register here</button>
-                        </div>
+ 
                     </div>
                 }
 

@@ -39,4 +39,5 @@ public partial class TroopLeaderRegistration
 
     [Required]
     public string? LeaderEmail { get; set; }
+
 }

@@ -4,56 +4,15 @@
 
 @using Microsoft.AspNetCore.Authorization
 @using IA_AbansiBabayiSystemBlazor.Service
-@inject UserSessionService UserSession
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
 <!DOCTYPE html>
 
 
-     <h1>You are not authorized to view</h1>
-
-    <p>The user ID is: @loggedinUserID </p>
-    <p>The user is: @loggedinUserEmail </p>
-    <p>The user role is: @loggedinUserRole </p>
+     <h1>You are logged in on user page</h1>
 
 
 @code {
-    private int loggedinUserID;
-    private string loggedinUserEmail = "";
-    private string loggedinUserRole = "";
-
-    private bool isFirstRender = true;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            isFirstRender = false;
-
-            var userIdString = await JS.InvokeAsync<string>("sessionStorage.getItem", "userId");
-
-            if (string.IsNullOrWhiteSpace(userIdString))
-            {
-                NavigationManager.NavigateTo("/notFoundPage");
-                return;
-            }
-
-            if (int.TryParse(userIdString, out int userId))
-            {
-                loggedinUserID = userId;
-            }
-            else
-            {
-                // Handle parse failure if needed
-                NavigationManager.NavigateTo("/notFoundPage");
-                return;
-            }
-
-            loggedinUserEmail = await JS.InvokeAsync<string>("sessionStorage.getItem", "userEmail");
-            loggedinUserRole = await JS.InvokeAsync<string>("sessionStorage.getItem", "userRole");
-
-            StateHasChanged(); // refresh UI after loading user data
-        }
-    }
+   
 }

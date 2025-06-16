@@ -5,7 +5,6 @@
 
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
-@inject UserSessionService UserSessionService
 
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
    <MudSnackbarProvider MaxDisplayedSnackbars="3" Position="SnackbarPosition.TopCenter" />
@@ -67,8 +66,6 @@
 
     private async Task Logout()
     {
-        await JS.InvokeVoidAsync("sessionStorage.clear");
-        UserSessionService.ClearUser();
         NavigationManager.NavigateTo("/landingPage");
     }
 }

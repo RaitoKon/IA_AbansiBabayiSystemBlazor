@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace IA_AbansiBabayiSystemBlazor.Data;
 
-public partial class ApplicationDbContext : DbContext
+public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
     public ApplicationDbContext()
     {
@@ -16,53 +18,16 @@ public partial class ApplicationDbContext : DbContext
     {
     }
 
-    public virtual DbSet<Login> Logins { get; set; }
-
     public virtual DbSet<TroopLeaderRegistration> TroopLeaders {  get; set; }
 
     public virtual DbSet<TroopMemberRegistration> TroopMembers { get; set; }
 
     public virtual DbSet<RegisteredTroopLeader> RegisteredTroopLeaders { get; set; }
 
+    public virtual DbSet<TroopLeaderAccount> RegisteredTroopLeaderAccounts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Login>(entity =>
-        {
-            entity.HasKey(e => e.UserId).HasName("PK__tmp_ms_x__CB9A1CDF86BD24EB");
-
-            entity.ToTable("LOGIN");
-
-            entity.HasIndex(e => e.Email, "UQ_LOGIN_Email").IsUnique();
-
-            entity.Property(e => e.UserId).HasColumnName("userID");
-            entity.Property(e => e.Email)
-                .HasMaxLength(100)
-                .IsUnicode(false)
-                .HasColumnName("email");
-            entity.Property(e => e.Password)
-                .HasMaxLength(100)
-                .IsUnicode(false)
-                .HasColumnName("password");
-            entity.Property(e => e.AuthRoleId).HasColumnName("authRoleID");
-
-            entity.HasOne(d => d.AuthRoleNavigation)
-                .WithMany(p => p.Logins)
-                .HasForeignKey(d => d.AuthRoleId)
-                .HasConstraintName("FK_LOGIN_AUTHORIZATION_ROLES");
-        });
-
-        modelBuilder.Entity<AuthorizationRole>(entity =>
-        {
-            entity.HasKey(e => e.AuthRoleId).HasName("PK_TROOP_ROLES");
-
-            entity.ToTable("AUTHORIZATION_ROLES");
-
-            entity.Property(e => e.AuthRoleId).HasColumnName("authRoleID");
-            entity.Property(e => e.AuthRoleName)
-                .HasMaxLength(50)
-                .IsUnicode(false)
-                .HasColumnName("authRoleName");
-        });
 
         modelBuilder.Entity<TroopLeaderRegistration>(entity =>
         {
@@ -200,6 +165,19 @@ public partial class ApplicationDbContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("leaderTorNT");
         });
+
+        modelBuilder.Entity<TroopLeaderAccount>(entity =>
+        {
+            entity.HasKey(e => e.AccountsId).HasName("PK__TROOP_LE__4A22408A41AD76EC");
+
+            entity.ToTable("TROOP_LEADER_ACCOUNTS");
+
+            entity.Property(e => e.AccountsId).HasColumnName("accountsID");
+            entity.Property(e => e.Id).HasMaxLength(450);
+            entity.Property(e => e.LeaderId).HasColumnName("leaderID");
+        });
+
+        base.OnModelCreating(modelBuilder);
 
         OnModelCreatingPartial(modelBuilder);
     }

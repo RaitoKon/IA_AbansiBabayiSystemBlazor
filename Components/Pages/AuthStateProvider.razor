@@ -1,0 +1,19 @@
+﻿@using System.Security.Claims
+
+@inject AuthenticationStateProvider AuthProvider
+
+@code {
+
+    private ClaimsPrincipal user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            Console.WriteLine($"Logged in as: {user.Identity.Name}");
+        }
+    }
+}

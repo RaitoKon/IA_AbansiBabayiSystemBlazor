@@ -145,11 +145,12 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             try
             {
 
-                var existingLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
 
-                if (existingLeader != null)
+                if (existingLeader != null || registerdLeader != null)
                 {
-                    errorMessage = "This email is already registered.";
+                    errorMessage = "Your email is already registered. Proceed to log-in";
                     return;
                 }
 

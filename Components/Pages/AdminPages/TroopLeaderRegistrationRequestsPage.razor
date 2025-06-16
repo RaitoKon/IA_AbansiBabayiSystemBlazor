@@ -3,6 +3,7 @@
 @using IA_AbansiBabayiSystemBlazor.Data.Models
 @using Microsoft.EntityFrameworkCore
 @using IA_AbansiBabayiSystemBlazor.Service
+@using Microsoft.AspNetCore.Identity
 
 @inject ApplicationDbContext GetTroopLeaderData
 @inject NavigationManager NavigationManager
@@ -10,6 +11,9 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject UserManager<ApplicationUser> UserManager
+@inject EmailService EmailService
+@inject RoleManager<IdentityRole> RoleManager
 
 @page "/troopLeaderRegistrationRequestsPage"
 @layout Layout.ThemedLayout
@@ -248,39 +252,67 @@
 
     private async Task RegisterPerson(TroopLeaderRegistration person)
     {
+        // Step 1: Move to RegisteredTroopLeader
         var registeredLeader = new RegisteredTroopLeader
-
-			{
-				LeaderFname = person.LeaderFname,
-				LeaderMInitial = person.LeaderMInitial,
-				LeaderLname = person.LeaderLname,
-				LeaderPosition = person.LeaderPosition,
+            {
+                LeaderFname = person.LeaderFname,
+                LeaderMInitial = person.LeaderMInitial,
+                LeaderLname = person.LeaderLname,
+                LeaderPosition = person.LeaderPosition,
                 LeaderRole = person.LeaderRole,
-				LeaderTorNT = person.LeaderTorNT,
-				LeaderRegStatus = person.LeaderRegStatus,
-				LeaderBirthdate = person.LeaderBirthdate,
-				LeaderBeneficiary = person.LeaderBeneficiary,
-				LeaderEmail = person.LeaderEmail,
+                LeaderTorNT = person.LeaderTorNT,
+                LeaderRegStatus = person.LeaderRegStatus,
+                LeaderBirthdate = person.LeaderBirthdate,
+                LeaderBeneficiary = person.LeaderBeneficiary,
+                LeaderEmail = person.LeaderEmail,
                 AuthRoleId = 2,
-			};
-
+            };
 
         GetTroopLeaderData.RegisteredTroopLeaders.Add(registeredLeader);
-
-        var toDelete = await GetTroopLeaderData.TroopLeaders
-        .FirstOrDefaultAsync(x => x.LeaderId == person.LeaderId);
-
-        if (toDelete is not null)
-        {
-            GetTroopLeaderData.TroopLeaders.Remove(toDelete);
-        }
-
-        TroopService.Delete(person);
-
         await GetTroopLeaderData.SaveChangesAsync();
 
-        Snackbar.Add($"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been registered successfully!", Severity.Success);
+        // Step 2: Create login account
+        var newUser = new ApplicationUser
+            {
+                UserName = person.LeaderEmail,
+                Email = person.LeaderEmail,
+                EmailConfirmed = true,
+                MustChangePassword = true
+            };
 
+        var tempPassword = GenerateTemporaryPassword.GenerateTempPassword();
+
+        var result = await UserManager.CreateAsync(newUser, tempPassword);
+
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                Snackbar.Add($"Error: {error.Description}", Severity.Error);
+            }
+            return;
+        }
+
+        await UserManager.AddToRoleAsync(newUser, "TroopLeader");
+
+        // Step 3: Link RegisteredTroopLeader to user account
+        var accountLink = new TroopLeaderAccount
+            {
+                LeaderId = registeredLeader.LeaderId,
+                Id = newUser.Id
+            };
+
+        GetTroopLeaderData.RegisteredTroopLeaderAccounts.Add(accountLink);
+        await GetTroopLeaderData.SaveChangesAsync();
+
+        await EmailService.SendEmailAsync(person.LeaderEmail, person.LeaderFname, tempPassword);
+
+        // Step 4: Remove from pending registration
+        GetTroopLeaderData.TroopLeaders.Remove(person);
+        TroopService.Delete(person);
+        await GetTroopLeaderData.SaveChangesAsync();
+
+        Snackbar.Add($"{person.LeaderFname} {person.LeaderLname} has been registered and account created!", Severity.Success);
     }
 
     private async Task DeletePerson(TroopLeaderRegistration person)
@@ -335,7 +367,5 @@
         _isSinglePersonClicked = false;
         _isMultiplePersonsClicked = false;
     }
-
-
 }
 
