@@ -54,9 +54,22 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddControllers();
 
 // --- Identity (Minimal for Now) ---
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false; // symbols like @, !
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 3;
+
+    // Optional: Lockout, user settings, etc.
+    options.User.RequireUniqueEmail = true;
+
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // --- Authentication State (default, clean) ---
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
@@ -71,6 +84,30 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 var app = builder.Build();
+
+//using (var scope = app.Services.CreateScope())
+//{
+//    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+//    var user = await userManager.FindByEmailAsync("tairodeoni.garcia-22@cpu.edu.ph");
+
+//    if (user != null)
+//    {
+//        var hasPassword = await userManager.HasPasswordAsync(user);
+//        if (!hasPassword)
+//        {
+//            var result = await userManager.AddPasswordAsync(user, "Temp@123");
+//            if (result.Succeeded)
+//            {
+//                Console.WriteLine("Password reset successfully!");
+//            }
+//            else
+//            {
+//                foreach (var error in result.Errors)
+//                    Console.WriteLine($"Error: {error.Description}");
+//            }
+//        }
+//    }
+//}
 
 // --- Role Seeder (optional if you plan to add roles) ---
 using (var scope = app.Services.CreateScope())
