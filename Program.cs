@@ -1,33 +1,33 @@
 using IA_AbansiBabayiSystemBlazor.Components;
 using IA_AbansiBabayiSystemBlazor.Data;
+using IA_AbansiBabayiSystemBlazor.Data.Models;
 using IA_AbansiBabayiSystemBlazor.Hubs;
 using IA_AbansiBabayiSystemBlazor.Service;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI;
-using Microsoft.AspNetCore.Identity.UI.Services;
-using Microsoft.AspNetCore.Components.Server;
 
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using MudBlazor;
+
 using MudBlazor.Services;
-using IA_AbansiBabayiSystemBlazor.Data.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// --- Razor Components ---
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Database connection
+// --- Database Setup ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
+// --- Data Services per Entity ---
 var dbContextType = typeof(ApplicationDbContext);
 var dbSetProperties = dbContextType.GetProperties()
     .Where(p => p.PropertyType.IsGenericType &&
@@ -36,60 +36,33 @@ var dbSetProperties = dbContextType.GetProperties()
 foreach (var dbSetProp in dbSetProperties)
 {
     var entityType = dbSetProp.PropertyType.GetGenericArguments()[0];
-
     var serviceType = typeof(TableDataService<>).MakeGenericType(entityType);
     builder.Services.AddScoped(serviceType);
 }
 
-// Developer exception page for DB errors
+// --- General Services ---
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
-// Passed Data Route Service
 builder.Services.AddScoped<PassedDataRoute>();
-
 builder.Services.AddMudServices();
-
 builder.Services.AddSignalR();
-
 builder.Services.AddSingleton(typeof(TableDataService<>));
-
 builder.Services.AddAuthorization();
 
-builder.Services.AddScoped<AuthenticationStateProvider,
-    RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
-
-builder.Services.AddCascadingAuthenticationState();
-
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/landingPage";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Lax; // <- Important for same-site POST
-});
-
-builder.Services.AddScoped(sp =>
-    new HttpClient { BaseAddress = new Uri("https://localhost:7106") });
-
+// --- Email, Http, Controllers ---
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7106") });
 builder.Services.AddScoped<EmailService>();
-
 builder.Services.AddControllers();
 
-// Add Identity with roles support
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.SignIn.RequireConfirmedAccount = false; // Change to true if email confirmation is needed
+// --- Identity (Minimal for Now) ---
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
 
-    options.Password.RequireDigit = true;                  // At least one number
-    options.Password.RequiredLength = 6;                   // Minimum of 8 characters
-    options.Password.RequireNonAlphanumeric = false;        // At least one symbol (e.g., @, #, !)
-    options.Password.RequireUppercase = true;              // At least one uppercase letter
-    options.Password.RequireLowercase = true;              // At least one lowercase letter
-    options.Password.RequiredUniqueChars = 3;
-})
-.AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
+// --- Authentication State (default, clean) ---
+builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
+builder.Services.AddCascadingAuthenticationState();
 
-// Configure login path and cookies
+// --- Optional: Configure login cookie ---
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/landingPage";
@@ -97,47 +70,16 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
-
 var app = builder.Build();
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-//    var user = await userManager.FindByEmailAsync("tairodeoni.garcia-22@cpu.edu.ph");
-
-//    if (user != null)
-//    {
-//        // Remove old password
-//        await userManager.RemovePasswordAsync(user);
-
-//        // Add new password
-//        var result = await userManager.AddPasswordAsync(user, "Temp@123");
-
-//        if (result.Succeeded)
-//        {
-//            // Update MustChangePassword flag
-//            user.MustChangePassword = true;
-//            await userManager.UpdateAsync(user);
-
-//            Console.WriteLine("Password reset successfully and MustChangePassword set to false!");
-//        }
-//        else
-//        {
-//            foreach (var error in result.Errors)
-//                Console.WriteLine(error.Description);
-//        }
-//    }
-//}
-
-
+// --- Role Seeder (optional if you plan to add roles) ---
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await SeedRoles.InitializeAsync(roleManager);
 }
 
-// Configure the HTTP request pipeline.
-// Configure middleware
+// --- Middleware ---
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();

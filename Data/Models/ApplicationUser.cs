@@ -4,8 +4,6 @@ namespace IA_AbansiBabayiSystemBlazor.Data.Models
 {
     public class ApplicationUser : IdentityUser
     {
-
-        public bool MustChangePassword { get; set; } = true;
-
+        public bool MustChangePassword { get; set; } = false;
     }
 }

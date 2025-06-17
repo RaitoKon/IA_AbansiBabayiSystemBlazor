@@ -18,6 +18,26 @@
     <Routes @rendermode=RenderMode.InteractiveServer />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+                window.submitLoginForm = (email, password) => {
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = "/auth/login";
+
+            const emailInput = document.createElement("input");
+            emailInput.name = "email";
+            emailInput.value = email;
+            form.appendChild(emailInput);
+
+            const passwordInput = document.createElement("input");
+            passwordInput.name = "password";
+            passwordInput.value = password;
+            form.appendChild(passwordInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        };
+    </script>
 </body>
 
 </html>

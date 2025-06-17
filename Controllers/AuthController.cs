@@ -2,11 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
-using static IA_AbansiBabayiSystemBlazor.Components.Pages.LandingPage;
 
 namespace IA_AbansiBabayiSystemBlazor.Controllers
 {
-
     [ApiController]
     [Route("auth")]
     public class AuthController : ControllerBase
@@ -21,22 +19,19 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromForm] string email, [FromForm] string password)
+        public async Task<IActionResult> RedirectLogin([FromForm] string email, [FromForm] string password)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, password))
-                return BadRequest(new { message = "Invalid credentials." });
+                return Unauthorized();
 
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             if (user.MustChangePassword)
-                return Ok(new { redirectUrl = "/forceResetPasswordPage" });
+                return Redirect("/forceResetPasswordPage");
 
-            return Ok(new { redirectUrl = "/userPage" });
+            return Redirect("/userPage");
         }
-
-
-        private ResetLoginModel resetLoginModel = new();
 
         [HttpPost("reset-login")]
         public async Task<IActionResult> ResetLogin([FromBody] ResetLoginModel model)
@@ -45,15 +40,8 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
             if (user == null)
                 return BadRequest("User not found.");
 
-            // Ensure the user has a password (especially if one was just set)
-            var hasPassword = await _userManager.HasPasswordAsync(user);
-            if (!hasPassword)
-                return BadRequest("User has no password set.");
-
-            // Sign out the current session
             await _signInManager.SignOutAsync();
 
-            // Attempt to log in with the new password
             var result = await _signInManager.PasswordSignInAsync(user.UserName, model.NewPassword, isPersistent: false, lockoutOnFailure: false);
             if (!result.Succeeded)
                 return BadRequest("Login failed after password reset.");
@@ -61,7 +49,10 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
             return Ok(); // Successful login
         }
 
+        public class ResetLoginModel
+        {
+            public string Username { get; set; }
+            public string NewPassword { get; set; }
+        }
     }
 }
-
-

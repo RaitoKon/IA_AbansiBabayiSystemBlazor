@@ -38,25 +38,48 @@
                 {
                     <div class="right-card">
 
-                            <div class="form-setup">
-                                <h2 class="login-title">Login</h2>
+                        <div class="form-setup">
+                            <h2 class="login-title">Login</h2>
 
-                                <input type="text" @bind="loginModel.Email" class="input-username" placeholder="Email" autocomplete="username" />
-                                <input type="password" @bind="loginModel.Password" class="input-password" placeholder="Password" autocomplete="current-password" />
+                            <input type="text"
+                                   @bind="loginModel.Email"
+                                   class="input-username"
+                                   placeholder="Email"
+                                   autocomplete="username" />
 
-                                @if (!string.IsNullOrWhiteSpace(errorMessage))
-                                {
-                                    <div class="error-message">@errorMessage</div>
-                                }
+                            <input type="password"
+                                   @bind="loginModel.Password"
+                                   class="input-password"
+                                   placeholder="Password"
+                                   autocomplete="current-password" />
 
-                                <button type="submit" @onclick="LoginAsync" class="green-button">Login</button>
-                                <button type="button" @onclick="CancelRegistration" class="dimgray-button">Close</button>
-                            </div>
+                            @if (!string.IsNullOrWhiteSpace(errorMessage))
+                            {
+                                <div class="error-message">@errorMessage</div>
+                            }
 
-                            <p class="register-prompt">Don't have an account?</p>
-                            <br />
-                            <button type="button" @onclick="ShowScoutLevel" class="green-button">Register here</button>
- 
+                            <button type="submit"
+                                    @onclick="PerformLogin"
+                                    class="green-button">
+                                Login
+                            </button>
+
+                            <button type="button"
+                                    @onclick="CancelRegistration"
+                                    class="dimgray-button">
+                                Close
+                            </button>
+                        </div>
+
+                        <p class="register-prompt">Don't have an account?</p>
+                        <br />
+
+                        <button type="button"
+                                @onclick="ShowScoutLevel"
+                                class="green-button">
+                            Register here
+                        </button>
+
                     </div>
                 }
 

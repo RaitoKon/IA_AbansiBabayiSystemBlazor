@@ -26,38 +26,15 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             [Required]
             public string Password { get; set; }
         }
-        private async Task LoginAsync()
+        private async Task PerformLogin()
         {
-            errorMessage = ""; // clear previous message
-
-            var formData = new MultipartFormDataContent
-        {
-            { new StringContent(loginModel.Email), "email" },
-            { new StringContent(loginModel.Password), "password" }
-        };
-
-            var response = await Http.PostAsync("/auth/login", formData);
-
-            if (response.IsSuccessStatusCode)
+            if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
             {
-                var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                if (result != null && result.TryGetValue("redirectUrl", out var url))
-                {
-                    NavigationManager.NavigateTo(url, forceLoad: true);
-                }
+                errorMessage = "Please enter your credentials.";
+                return;
             }
-            else
-            {
-                try
-                {
-                    var error = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                    errorMessage = error?["message"] ?? "Login failed.";
-                }
-                catch
-                {
-                    errorMessage = "Login failed. Unexpected error.";
-                }
-            }
+
+            await JS.InvokeVoidAsync("submitLoginForm", loginModel.Email, loginModel.Password);
         }
 
         private bool showLoginForm = false;
