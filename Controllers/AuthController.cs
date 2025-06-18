@@ -24,13 +24,11 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, password))
-                return Unauthorized();
+            {
+                return Redirect("/landingPage?error=invalid");
+            }
 
             await _signInManager.SignInAsync(user, isPersistent: false);
-
-            if (user.MustChangePassword)
-                return Redirect("/forceResetPasswordPage");
-
             return Redirect("/userPage");
         }
 

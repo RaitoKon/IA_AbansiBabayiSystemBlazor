@@ -10,31 +10,50 @@ using Azure;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.JSInterop;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 {
     public partial class LandingPage
     {
-
         private LoginModel loginModel = new();
         private string errorMessage;
 
         public class LoginModel
         {
-            [Required]
+            [Required(ErrorMessage = "Email is required.")]
             public string Email { get; set; }
-            [Required]
+
+            [Required(ErrorMessage = "Password is required.")]
             public string Password { get; set; }
         }
-        private async Task PerformLogin()
+
+        private async Task HandleLoginAsync()
         {
+            // Optional: Basic client-side validation
             if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
             {
-                errorMessage = "Please enter your credentials.";
+                errorMessage = "Please fill in both fields.";
                 return;
             }
 
+            errorMessage = null;
+
+            // ✅ Calls the JS form submitter that sends a POST to /auth/login
             await JS.InvokeVoidAsync("submitLoginForm", loginModel.Email, loginModel.Password);
+        }
+
+        protected override void OnInitialized()
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var query = QueryHelpers.ParseQuery(uri.Query); // returns Dictionary<string, StringValues>
+
+            if (query.TryGetValue("error", out var error) && error == "invalid")
+            {
+                errorMessage = "Invalid credentials.";
+                ToggleLoginForm();
+            }
         }
 
         private bool showLoginForm = false;
