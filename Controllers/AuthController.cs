@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
+using MudBlazor.Interfaces;
 
 namespace IA_AbansiBabayiSystemBlazor.Controllers
 {
@@ -53,6 +54,13 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
         {
             public string Username { get; set; }
             public string NewPassword { get; set; }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return Ok();
         }
     }
 }

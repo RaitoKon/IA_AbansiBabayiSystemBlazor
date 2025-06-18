@@ -1,18 +1,231 @@
-﻿@inject IJSRuntime JSRuntime
+﻿
+@using IA_AbansiBabayiSystemBlazor.Data.Models;
+@using IA_AbansiBabayiSystemBlazor.Data;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.EntityFrameworkCore
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext UserInfoFromDB
+@inject SignInManager<ApplicationUser> SignInManager
+@inject HttpClient Http
+
 @page "/userPage"
 @layout Layout.BlankLayout
 
-@using Microsoft.AspNetCore.Authorization
-@using IA_AbansiBabayiSystemBlazor.Service
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JS
-
+<MudThemeProvider />
+<MudPopoverProvider />
 <!DOCTYPE html>
 
+<div class="page-wrapper">
 
-     <h1>You are logged in on user page</h1>
+        <nav class="navigation">
+            <div class="nav-bg">
+                <div class="nav-left">
+                    <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">HOME</a>
+                        <a href="#" class="nav-link">BADGES</a>
+                        <a href="#" class="nav-link">TROOP<br>LOCATOR</a>
+                    </div>
+                </div>
+                <p>@troopLeaderFname</p>
+                <div class="nav-right">  
+                    <a href="#" class="nav-link">DASHBOARD</a>
+                    <MudMenu>
+                        <ActivatorContent>
+                            <MudAvatar Class="double-border">
+                                <MudImage Src="images/default-scout-avatar.jpg" />
+                            </MudAvatar>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudMenuItem Label="Profile" />
+                            <MudDivider />
+                            <MudMenuItem OnClick="LogoutAsync" Label="Logout" />
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+            </div>
+        </nav>
+
+        <header class="hero">
+
+            <img src="images/BG-Base1.png" alt="Background" class="hero-bg">
+            
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h2 class="welcome-text">Welcome to,</h2>
+                    <h1 class="main-title">
+                        <span class="text-shadow">ILOILO<br>GIRL<br>SCOUT<br>COUNCIL</span>
+                        <span class="gradient">ILOILO<br>GIRL<br>SCOUT<br>COUNCIL</span>
+                    </h1>
+
+                </div>
+                <div>
+                    <img src="images/BG-Vector.png" alt="Background" class="vector-image">
+                </div>
+            </div>
+        </header>
+
+        <section class="programs-grid">
+            <article class="program-card camps">
+                <h3 class="program-title">Camps</h3>
+                <p class="program-description">
+                    Camping provides adventures that prepare Girl Scouts for life. Camps
+                    develop positive values, leadership, friendliness, and willingness to
+                    serve.
+                </p>
+            </article>
+
+            <article class="program-card program">
+                <h3 class="program-title">Program</h3>
+                <p class="program-description">
+                    The GSP Program provides space for a girl to maximize her fullest
+                    potential to become a responsible and productive member of society.
+                </p>
+            </article>
+
+            <article class="program-card training">
+                <h3 class="program-title">Training</h3>
+                <p class="program-description">
+                    Adult members receive opportunities to be trained and empowered as human
+                    resource base for the Organization.
+                </p>
+            </article>
+
+            <article class="program-card membership">
+                <h3 class="program-title">Membership</h3>
+                <p class="program-description">
+                    Girls, young women, and adults who believe in Girl Scouting and accept
+                    the principles embodied in the Girl Scout Promise and Law are welcome to
+                    be members of GSP.
+                </p>
+            </article>
+        </section>
+        <div class="separator"></div>
+        <div class="main-content">
+            <div class="second-background"></div>
+            <section class="news-section">
+                <div class="news-content">
+                    <div class="news-image-side-wrapper">
+                        <div class="news-image-wrapper">
+                            <img src="images/News1.jpg"
+                                 alt="Group photo"
+                                 class="news-image" />
+                        </div>
+                    </div>
+                    <div class="news-text-side-wrapper">
+                        <article class="news-text">
+                            <h2 class="news-title">GSP Iloilo Council</h2>
+                            <p class="news-description">
+                                Earlier today, the museum was filled with these Twinklers, Stars,
+                                Juniors, Seniors and Cadets of the Girl Scouts of the Philippines
+                                -Iloilo Council. These Ilongga Scouts were able to gain knowledge of
+                                the rich economic History of the country as well as appreciating
+                                various historical and significant landmarks in the City.
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                Earlier today, the museum was filled with these Twinklers, Stars,
+                                Juniors, Seniors and Cadets of the Girl Scouts of the Philippines
+                                -Iloilo Council. These Ilongga Scouts were able to gain knowledge of
+                                the rich economic History of the country as well as appreciating
+                                various historical and significant landmarks in the City.
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                This is in celebration of their 2nd Cultural Immersion and Traditional
+                                Exposure (CITE) tour and the Museum and Galleries Month 2024.
+                                Come and drop by the museum. We are just steps away from the Iloilo
+                                City Hall. The Museum operates fro
+                                <br>
+                                <br>
+                            </p>
+                            <a href="#" class="see-more">Read more...</a>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <footer class="footer">
+            <p class="footer-text">Powered by <strong>ABANSIBABAYI</strong></p>
+        </footer>
+    </div>
+
+
+
 
 
 @code {
-   
+
+    private ApplicationUser currentUser;
+    private string troopLeaderFname;
+    private string errorMessage;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated ?? false)
+            {
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                currentUser = await UserManager.FindByIdAsync(userId);
+
+                if (currentUser != null)
+                {
+                    // Fetch troop leader name from related data
+                    var account = await UserInfoFromDB.RegisteredTroopLeaderAccounts
+                        .FirstOrDefaultAsync(a => a.Id == userId);
+
+                    if (account != null)
+                    {
+                        var troopInfo = await UserInfoFromDB.RegisteredTroopLeaders
+                            .FirstOrDefaultAsync(l => l.LeaderId == account.LeaderId);
+
+                        troopLeaderFname = troopInfo?.LeaderFname;
+                    }
+                }
+            }
+            else
+            {
+                errorMessage = "User is not authenticated.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Something went wrong: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await JS.InvokeVoidAsync("eval", @"
+        fetch('/auth/logout', {
+            method: 'POST',
+            credentials: 'include' // send auth cookie
+        }).then(() => {
+            window.location.href = '/landingPage';
+        });
+    ");
+    }
 }
+   

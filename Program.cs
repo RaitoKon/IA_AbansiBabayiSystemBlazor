@@ -81,6 +81,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/landingPage";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    options.SlidingExpiration = false;
 });
 
 var app = builder.Build();
