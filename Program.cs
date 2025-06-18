@@ -88,6 +88,42 @@ var app = builder.Build();
 
 //using (var scope = app.Services.CreateScope())
 //{
+//    var services = scope.ServiceProvider;
+
+//    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+//    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+//    // 1. Ensure roles exist
+//    string[] roleNames = { "Admin", "Troop Leader", "Scout" };
+//    foreach (var roleName in roleNames)
+//    {
+//        if (!await roleManager.RoleExistsAsync(roleName))
+//        {
+//            await roleManager.CreateAsync(new IdentityRole(roleName));
+//        }
+//    }
+
+//    // 2. Promote user to Admin
+//    var email = "tairodeoni.garcia-22@cpu.edu.ph"; // CHANGE THIS to your test user's email
+//    var user = await userManager.FindByEmailAsync(email);
+
+//    if (user != null)
+//    {
+//        var existingRoles = await userManager.GetRolesAsync(user);
+//        if (existingRoles.Any())
+//        {
+//            await userManager.RemoveFromRolesAsync(user, existingRoles); // remove all old roles
+//        }
+
+//        await userManager.AddToRoleAsync(user, "Admin"); // assign Admin role
+//    }
+//}
+
+
+
+
+//using (var scope = app.Services.CreateScope())
+//{
 //    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 //    var user = await userManager.FindByEmailAsync("tairodeoni.garcia-22@cpu.edu.ph");
 

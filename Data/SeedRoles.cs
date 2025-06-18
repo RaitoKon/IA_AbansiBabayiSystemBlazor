@@ -6,7 +6,7 @@ namespace IA_AbansiBabayiSystemBlazor.Data
     {
         public static async Task InitializeAsync(RoleManager<IdentityRole> roleManager)
         {
-            string[] roleNames = { "Admin", "TroopLeader", "Scout"};
+            string[] roleNames = { "Admin", "Troop Leader", "Scout"};
 
             foreach (var roleName in roleNames)
             {
@@ -15,6 +15,7 @@ namespace IA_AbansiBabayiSystemBlazor.Data
                     await roleManager.CreateAsync(new IdentityRole(roleName));
                 }
             }
+
         }
     }
 }
