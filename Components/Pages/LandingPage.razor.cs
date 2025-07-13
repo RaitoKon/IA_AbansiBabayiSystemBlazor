@@ -40,7 +40,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 
             errorMessage = null;
 
-            // ✅ Calls the JS form submitter that sends a POST to /auth/login
+
             await JS.InvokeVoidAsync("submitLoginForm", loginModel.Email, loginModel.Password);
         }
 

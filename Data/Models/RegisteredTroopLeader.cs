@@ -26,6 +26,4 @@ public partial class RegisteredTroopLeader
     public string? LeaderBeneficiary { get; set; }
 
     public string? LeaderEmail { get; set; }
-
-    public int? AuthRoleId { get; set; }
 }

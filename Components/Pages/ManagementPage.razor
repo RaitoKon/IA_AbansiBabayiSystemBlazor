@@ -4,12 +4,14 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 
-@page "/adminPage"
+@page "/managementPage"
+
 @layout Layout.ThemedLayout
+
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext UserInfoFromDB
-@inject ILogger<AdminPage> Logger
+@inject ILogger<ManagementPage> Logger
 
 <div class="page-wrapper">
     <div class="page-content">

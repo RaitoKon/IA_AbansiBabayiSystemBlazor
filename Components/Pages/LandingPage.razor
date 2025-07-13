@@ -1,6 +1,4 @@
-﻿
-
-@page "/"
+﻿@page "/"
 @page "/landingPage"
 
 @layout Layout.BlankLayout
@@ -27,8 +25,9 @@
 <div class="page-wrapper">
     <div class="log-in-form @(showLoginForm ? "log-in-form-visible" : "")">
         <div class="log-in-form-card">
-            <container class="column1">
+            <container class="column1" style="background-image: url('@backgroundImage');">
                 <div class="left-card">
+                    <img src="images/BG-Vector.png" alt="Girl-Scout-Vector" style="height: auto; width: 20rem;"/>
                     <p class="login-form-welcome-text">Welcome Back!</p>
                     <p class="login-form-p">Please Sign in to your account.</p>
                 </div>
@@ -38,6 +37,7 @@
                 @if (currentCard == "login-card")
                 {
                     <div class="right-card">
+                        <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo" style="margin: 0; margin-bottom: 1rem;">
 
                         <div class="form-setup">
                             <h2 class="login-title">Login</h2>
@@ -100,7 +100,7 @@
                 {
                     <div class="right-card-register2">
                         <h1>ARE YOU</h1>
-                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("Re-Register"))">Re - Register</button>
+                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("Re-Register"))">Existing</button>
                         <h1>OR</h1>
                         <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("New"))">New</button>
 

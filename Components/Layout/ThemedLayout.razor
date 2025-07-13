@@ -15,7 +15,7 @@
 @inject ILogger<ThemedLayout> Logger
 @inject UserManager<ApplicationUser> UserManager
 
-@attribute [Authorize]
+@* @attribute [Authorize] *@
 
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
    <MudSnackbarProvider MaxDisplayedSnackbars="3" Position="SnackbarPosition.TopCenter" />
@@ -32,7 +32,7 @@
                 </div>
             </div>
 
-           <AuthorizeView Roles="Admin">
+           @* <AuthorizeView Roles="Admin"> *@
 
                 <MudPaper Width="240px" Class="py-3" Elevation="1">
                     <MudNavMenu>
@@ -44,8 +44,9 @@
                                 <MudNavLink Href="/troopLeaderRegistrationRequestsPage" Icon="@Icons.Material.Filled.GroupAdd">Registration Requests</MudNavLink>
                                 <MudNavLink Href="/troopLeaderDashboardPage" Icon="@Icons.Material.Filled.Groups">Troop Dashboard</MudNavLink>
                             </MudNavGroup>
-                            <MudNavGroup Title="Event Registration" Icon="@Icons.Material.Filled.AppRegistration">
-                                Dashboard
+                            <MudNavGroup Title="Manage Events" Icon="@Icons.Material.Filled.AppRegistration">
+                                <MudNavLink Href="/addEventPage" Icon="@Icons.Material.Filled.EditCalendar">Add Event</MudNavLink>
+                                <MudNavLink Href="/eventRegistrationRequestsPage" Icon="@Icons.Material.Filled.FreeCancellation">Event Registration Requests</MudNavLink>
                             </MudNavGroup>
                             <MudNavGroup Title="Troop Information" Icon="@Icons.Material.Filled.AccountBox">
                                 Dashboard
@@ -54,7 +55,7 @@
                     </MudNavMenu>
                 </MudPaper>
 
-           </AuthorizeView>
+           @* </AuthorizeView> *@
 
            <AuthorizeView Roles="Troop Leader">
 
@@ -65,8 +66,8 @@
                         <MudDivider Class="my-2" />
                         <MudNavGroup Title="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
                             <MudNavGroup Title="Manage Scouts" Icon="@Icons.Material.Filled.PersonAdd">
-                                <MudNavLink Href="/ScoutRegistrationRequestsPage" Icon="@Icons.Material.Filled.GroupAdd">Registration Requests</MudNavLink>
-                                <MudNavLink Href="/ScoutDashboardPage" Icon="@Icons.Material.Filled.Groups">Scout Dashboard</MudNavLink>
+                                <MudNavLink Href="/scoutRegistrationRequestsPage" Icon="@Icons.Material.Filled.GroupAdd">Registration Requests</MudNavLink>
+                                <MudNavLink Href="/scoutDashboardPage" Icon="@Icons.Material.Filled.Groups">Scout Dashboard</MudNavLink>
                             </MudNavGroup>
                             <MudNavGroup Title="Event Registration" Icon="@Icons.Material.Filled.AppRegistration">
                                 Dashboard

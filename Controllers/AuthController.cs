@@ -28,7 +28,15 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
                 return Redirect("/landingPage?error=invalid");
             }
 
+            // Sign the user in first
             await _signInManager.SignInAsync(user, isPersistent: false);
+
+            // Then check if they must reset password
+            if (user is ApplicationUser appUser && appUser.MustChangePassword)
+            {
+                return Redirect("/forceResetPasswordPage");
+            }
+
             return Redirect("/userPage");
         }
 

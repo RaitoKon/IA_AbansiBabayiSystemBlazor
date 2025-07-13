@@ -106,7 +106,7 @@
     flex-shrink: 0;
     border-radius: 1.56rem 0rem 0rem 1.56rem;
     border: 1px solid #FFF;
-    background: linear-gradient(96deg, rgba(255, 255, 255, 0.33) -21.67%, rgba(255, 255, 255, 0.09) 75.46%);
+    background: linear-gradient(96deg, rgba(255, 255, 255, 1) -40.67%, rgba(255, 255, 255, 0.1) 10.46%);
     background-blend-mode: exclusion, normal;
     box-sizing: border-box;
 }
@@ -121,8 +121,6 @@
 
     .registration-placeholder-left p {
         font-family: Figtree;
-        color: #254A2A;
-        margin: 0.5rem;
     }
 
 .registration-placeholder-right {
@@ -146,10 +144,12 @@
     justify-content: center;
     z-index: 6;
     cursor: pointer;
+    filter: drop-shadow(0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.3))
 }
 
     .registration-dropdown p {
         margin: 0;
+        color: #254A2A; 
     }
 
     .registration-dropdown:hover {
@@ -160,6 +160,7 @@
 .dropdown-button {
     height: 2rem;
     width: auto;
+    align-self: center;
 }
 
 .registration-dropdown-toggle {
@@ -175,9 +176,8 @@
     z-index: 5; /* Ensure it appears above other elements */
     width: 20rem; /* Adjust width as needed */
     top: -2rem;
-    background: linear-gradient(360deg,rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.25) 100%);
+    background: white;
     border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a shadow for better visibility */
     font-family: Sora, sans-serif;
     font-weight: 700;
     cursor: pointer;
@@ -185,6 +185,7 @@
     border: solid 1px white;
     backdrop-filter: blur(3px);
     overflow: hidden;
+    filter: drop-shadow(0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.3))
 }
 
 .registration-dropdown-menu-on {
@@ -240,17 +241,57 @@
     justify-content: space-between;
 }
 
-    .grid-row input, .grid-row1 input {
-        height: 3.2rem;
+    .grid-row .input-design{
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 3.5rem;
         width: 100%;
-        padding: 0.5rem 1rem;
+        font-family: Figtree;
+        padding-inline: 0.7rem;
+        padding-block: 0.4rem;
         border-radius: 7px;
         border: 1px solid white;
-        background: linear-gradient(90deg, #FFF 0%, rgba(255, 255, 255, 0.25) 100%);
+        background: white;
         font-size: 1rem;
         color: #4a4a4a;
         box-sizing: border-box;
         transition: border 0.2s ease-in-out;
+        filter: drop-shadow(0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.3));
+    }
+
+.input-design:focus-within {
+    border-color: #28a745; /* Green border */
+    box-shadow: 0 0 0 0.2rem #28a74540; /* Green glow */
+}
+
+.dropdown-list {
+
+    height: 3.2rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 7px;
+    border: 1px solid white;
+    background: linear-gradient(90deg, #FFF 0%, rgba(255, 255, 255, 0.25) 100%);
+    font-size: 1rem;
+    color: #4a4a4a;
+    box-sizing: border-box;
+    transition: border 0.2s ease-in-out;
+}
+
+    option {
+        top: 0rem;
+        position: absolute;
+        border-radius: 7px;
+        border: 1px solid white;
+        background: linear-gradient(360deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.25) 40%);
+        font-size: 1rem;
+        color: #4a4a4a;
+        box-sizing: border-box;
+        transition: border 0.2s ease-in-out;
+        z-index: 1;
+        backdrop-filter: blur(3px);
+        overflow: hidden;
     }
 
 .grid-row1 {
@@ -264,7 +305,7 @@ input::placeholder {
 
 input:focus {
     outline: none;
-    border: 2px solid #254A2A;
+    border: none;
 }
 
 
@@ -272,50 +313,31 @@ input:focus {
     display: hidden;
 }
 
-.green-button, .dimgray-button {
-    width: 30%;
-    height: 3.2rem;
-    color: white;
-    border: none;
-    border-radius: 7px;
-    transition: background-color 0.2s ease-in-out;
-}
-
-.dimgray-button {
-    background-color: #6c757d;
-    width: 20%;
-}
-
-    .dimgray-button:hover {
-        background-color: #5c636a;
-    }
-
-.green-button {
-    background-color: darkgreen;
-}
-
-    .green-button:hover {
-        background-color: #254A2A;
-    }
-
 .input-dropdown {
     display: flex;
     justify-content: space-between;
     position: relative;
     width: 100%;
-    padding: 0.5rem 1rem;
+    height: 3.5rem;
+    padding-inline: 0.7rem;
+    padding-block: 0.5rem;
     border-radius: 7px;
-    border: 1px solid white;
-    background: linear-gradient(90deg, #FFF 0%, rgba(255, 255, 255, 0.25) 100%);
+    background: white;
     font-size: 1rem;
     color: #4a4a4a;
     box-sizing: border-box;
     transition: border 0.2s ease-in-out;
     z-index: 2;
+    filter: drop-shadow(0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.3));
+
 }
 
     .input-dropdown:hover {
         background: #f3f6f9;
+    }
+
+    .input-dropdown p{
+        color: black;
     }
 
 .input-dropdown-menu {
@@ -325,7 +347,7 @@ input:focus {
     position: absolute;
     border-radius: 7px;
     border: 1px solid white;
-    background: linear-gradient(360deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.25) 40%);
+    background: white;
     font-size: 1rem;
     color: #4a4a4a;
     box-sizing: border-box;
@@ -333,6 +355,7 @@ input:focus {
     z-index: 1;
     backdrop-filter: blur(3px);
     overflow: hidden;
+    filter: drop-shadow(0.25rem 0.25rem 0.5rem rgba(0, 0, 0, 0.3));
 }
 
 .input-dropdown-menu-on {
@@ -369,4 +392,22 @@ input:focus {
 input:-webkit-autofill {
     -webkit-box-shadow: 0 0 0 1000px white inset !important;
     -webkit-text-fill-color: #000 !important;
+}
+
+.scrollable-menu {
+    max-height: 9.6rem; /* 2 items × 3.2rem height */
+    overflow-y: auto;
+}
+
+label {
+    font-size: 0.7rem;
+    color: #254A2A;
+    padding-bottom: 0.2rem;
+}
+
+.error-message {
+    margin-block: 1rem;
+    color: red;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
 }

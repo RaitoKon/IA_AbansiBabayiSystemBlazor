@@ -14,7 +14,7 @@ public partial class TroopLeaderRegistration
     [Required]
     public string? LeaderRole { get; set; }
 
-    public int? CoLeaderToopNumber { get; set; }
+    public int? CoLeaderTroopNumber { get; set; }
 
     [Required]
     public string? LeaderTorNT { get; set; }

@@ -1,0 +1,109 @@
+﻿
+@page "/addEventPage"
+
+@using System.ComponentModel.DataAnnotations
+@inject ISnackbar Snackbar
+
+@layout Layout.ThemedLayout
+
+<div class="hero-content">
+
+        <MudPaper Elevation="4" Style="width: 100%; padding: 1rem; justify-self: center;">
+            <MudText Typo="Typo.h5" Class="mb-4">Add New Event</MudText>
+
+            <MudForm @ref="form" OnValidSubmit="HandleValidSubmit">
+                <MudTextField @bind-Value="eventModel.Title" Label="Event Title" Required="true" For="@(() => eventModel.Title)" />
+
+                <MudTextField @bind-Value="eventModel.Description" Label="Description" Lines="3" />
+
+                <MudDatePicker @bind-Date="eventModel.Date" Label="Event Date" Required="true" />
+
+                <MudTextField @bind-Value="eventModel.Location" Label="Location" />
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Type="Submit" Class="mt-4" OnClick="HandleValidSubmit">
+                    Submit
+                </MudButton>
+            </MudForm>
+        </MudPaper>
+
+    @if (events != null && events.Any())
+    {
+        <MudPaper Elevation="1" Style="width: 100%; padding: 1rem; justify-self: center;">
+            <MudText Typo="Typo.h6" Class="mb-3">Ongoing Events</MudText>
+            <MudDivider />
+                <MudGrid Style="margin: 0; width: 100%; justify-content: center !important;">
+                    @foreach (var e in events.OrderBy(e => e.Date ?? DateTime.MaxValue))
+                    {
+                        <MudCard Style="margin: 2rem; width: 40%;">
+                            <MudCardMedia Image="images/News2.jpg" Height="200" />
+                            <MudCardContent Style="display: flex; flex-direction: column;">
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-1" />
+                                    @e.Title
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-1" />
+                                    @e.Description
+                                </MudText>
+
+                                <MudText Typo="Typo.caption">
+                                    <MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-1" />
+                                    @(e.Date?.ToString("MMMM dd, yyyy") ?? "No date set")
+                                </MudText>
+
+                                <MudText Typo="Typo.caption">
+                                    <MudIcon Icon="@Icons.Material.Filled.Place" Class="mr-1" />
+                                    @e.Location
+                                </MudText>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary">Delete</MudButton>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary">Edit</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    }
+                </MudGrid>
+        </MudPaper>
+    }
+
+</div>
+@code {
+    private MudForm form;
+    private EventModel eventModel = new();
+    private List<EventModel> events = new();
+
+    protected override void OnInitialized()
+    {
+        events = new List<EventModel>();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        events.Add(new EventModel
+            {
+                Title = eventModel.Title,
+                Description = eventModel.Description,
+                Date = eventModel.Date,
+                Location = eventModel.Location
+            });
+
+        eventModel = new();
+        Snackbar.Add("Event added!", Severity.Success);
+        await form.ResetAsync();
+        StateHasChanged(); // Force UI update
+    }
+
+    public class EventModel
+    {
+        [Required(ErrorMessage = "Title is required")]
+        public string Title { get; set; }
+
+        public string Description { get; set; }
+
+        [Required(ErrorMessage = "Date is required")]
+        public DateTime? Date { get; set; }
+
+        public string Location { get; set; }
+    }
+}

@@ -24,7 +24,11 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public virtual DbSet<RegisteredTroopLeader> RegisteredTroopLeaders { get; set; }
 
+    public virtual DbSet<RegisteredTroopMember> RegisteredTroopMembers { get; set; }
+
     public virtual DbSet<TroopLeaderAccount> RegisteredTroopLeaderAccounts { get; set; }
+
+    public virtual DbSet<TroopMemberAccount> RegisteredTroopMemberAccounts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,13 +65,13 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("leaderPosition");
-            entity.Property(e => e.CoLeaderToopNumber).HasColumnName("coleaderTroopNo");
+            entity.Property(e => e.CoLeaderTroopNumber).HasColumnName("coleaderTroopNo");
             entity.Property(e => e.LeaderRegStatus)
                 .HasMaxLength(50)
                 .IsFixedLength()
                 .HasColumnName("leaderRegStatus");
             entity.Property(e => e.LeaderRole)
-                .HasMaxLength(10)
+                .HasMaxLength(50)
                 .IsFixedLength()
                 .HasColumnName("leaderRole");
             entity.Property(e => e.LeaderTorNT)
@@ -78,9 +82,9 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<TroopMemberRegistration>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("TROOP_MEMBER_REGISTRATION");
+            entity.HasKey(e => e.TroopMemId);
+            
+            entity.ToTable("TROOP_MEMBER_REGISTRATION");
 
             entity.Property(e => e.TroopMemBeneficiary)
                 .HasMaxLength(150)
@@ -117,6 +121,7 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .IsUnicode(false)
                 .HasColumnName("troopMemRole");
             entity.Property(e => e.TroopMemScoutNumber).HasColumnName("troopMemScoutNumber");
+            entity.Property(e => e.TroopMemTroopNumber).HasColumnName("troopMemTroopNumber");
         });
 
         modelBuilder.Entity<RegisteredTroopLeader>(entity =>
@@ -126,7 +131,6 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.ToTable("REGISTERED_TROOP_LEADER");
 
             entity.Property(e => e.LeaderId).HasColumnName("leaderID");
-            entity.Property(e => e.AuthRoleId).HasColumnName("authRoleID");
             entity.Property(e => e.LeaderBeneficiary)
                 .HasMaxLength(150)
                 .IsUnicode(false)
@@ -161,9 +165,53 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .IsUnicode(false)
                 .HasColumnName("leaderRole");
             entity.Property(e => e.LeaderTorNT)
-                .HasMaxLength(10)
+                .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("leaderTorNT");
+        });
+
+        modelBuilder.Entity<RegisteredTroopMember>(entity =>
+        {
+            entity.HasKey(e => e.TroopMemId);
+
+            entity.ToTable("REGISTERED_TROOP_MEMBER");
+
+            entity.Property(e => e.TroopMemId).HasColumnName("troopMemID");
+            entity.Property(e => e.TroopMemBeneficiary)
+                .HasMaxLength(150)
+                .IsUnicode(false)
+                .HasColumnName("troopMemBeneficiary");
+            entity.Property(e => e.TroopMemBirthdate).HasColumnName("troopMemBirthdate");
+            entity.Property(e => e.TroopMemEmail)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("troopMemEmail");
+            entity.Property(e => e.TroopMemFname)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("troopMemFname");
+            entity.Property(e => e.TroopMemGradeOrYear)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("troopMemGradeOrYear");
+            entity.Property(e => e.TroopMemLname)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("troopMemLname");
+            entity.Property(e => e.TroopMemMinitial)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("troopMemMInitial");
+            entity.Property(e => e.TroopMemRegStatus)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("troopMemRegStatus");
+            entity.Property(e => e.TroopMemRole)
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasColumnName("troopMemRole");
+            entity.Property(e => e.TroopMemScoutNumber).HasColumnName("troopMemScoutNumber");
+            entity.Property(e => e.TroopMemTroopNumber).HasColumnName("troopMemTroopNumber");
         });
 
         modelBuilder.Entity<TroopLeaderAccount>(entity =>
@@ -175,6 +223,17 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.AccountsId).HasColumnName("accountsID");
             entity.Property(e => e.Id).HasMaxLength(450);
             entity.Property(e => e.LeaderId).HasColumnName("leaderID");
+        });
+
+        modelBuilder.Entity<TroopMemberAccount>(entity =>
+        {
+            entity.HasKey(e => e.AccountsId).HasName("PK__TROOP_ME__4A22408AB573DA3D");
+
+            entity.ToTable("TROOP_MEMBER_ACCOUNTS");
+
+            entity.Property(e => e.AccountsId).HasColumnName("accountsID");
+            entity.Property(e => e.Id).HasMaxLength(450);
+            entity.Property(e => e.TroopMemId).HasColumnName("troopMemID");
         });
 
         base.OnModelCreating(modelBuilder);
