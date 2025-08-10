@@ -21,7 +21,7 @@ public partial class RegisteredTroopLeader
 
     public string? LeaderMInitial { get; set; }
 
-    public DateOnly? LeaderBirthdate { get; set; }
+    public DateTime? LeaderBirthdate { get; set; }
 
     public string? LeaderBeneficiary { get; set; }
 

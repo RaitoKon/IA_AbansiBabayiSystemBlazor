@@ -5,11 +5,11 @@ namespace IA_AbansiBabayiSystemBlazor.Service
 {
     public class EmailService
     {
-        public async Task SendRegisteredConfirmationEmailAsync(string recipientEmail, string recipientFname, string recipientLname, string userTempPassword)
+        public async Task SendRegisteredConfirmationEmailAsync(string userNewEmail, string userCurrentEmail, string recipientFname, string userTempPassword)
         {
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress("Girl Scout Admin", "tairodeoni.garcia-22@cpu.edu.ph"));
-            message.To.Add(new MailboxAddress(recipientFname, recipientEmail));
+            message.To.Add(new MailboxAddress(recipientFname, userCurrentEmail));
             message.Subject = "Hi there! — Welcome to the Iloilo Girl Scout Council Website";
 
             // HTML email body
@@ -20,7 +20,7 @@ namespace IA_AbansiBabayiSystemBlazor.Service
                     <p>Your account has been successfully <strong>approved</strong>.</p>
                     <p>Here are your login details:</p>
                     <ul style='line-height: 1.6;'>
-                        <li><strong>Email:</strong> {recipientEmail}</li>
+                        <li><strong>Email:</strong> {userNewEmail}</li>
                         <li><strong>Temporary Password:</strong> {userTempPassword}</li>
                     </ul>
                     <p>👉 Please change your password immediately after logging in for the first time.</p>
@@ -35,7 +35,7 @@ namespace IA_AbansiBabayiSystemBlazor.Service
 
                     Your account has been approved.
 
-                    Email: {recipientEmail}
+                    Email: {userCurrentEmail}
                     Temporary Password: {userTempPassword}
 
                     Please change your password after your first login.

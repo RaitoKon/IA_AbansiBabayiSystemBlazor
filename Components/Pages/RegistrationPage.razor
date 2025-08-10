@@ -267,7 +267,7 @@
                                 <div class="grid-row">
                                     <div class="input-design">
                                         <label for="birth date">Birth Date</label>
-                                        <input type="text" id="birth-date" @bind="currentBirthDate" required />
+                                        <input type="date" id="birth-date" @bind="currentBirthDate" required />
                                     </div>
 
                                     <div class="input-design">
@@ -319,7 +319,21 @@
                             <div style=" display: flex; justify-content: space-between;">
 
                                 <MudButton Variant="Variant.Text" Size="Size.Large" Color="Color.Primary" OnClick="CancelRegistration">Cancel</MudButton>
-                                <MudButton Variant="Variant.Filled" Size="Size.Large" Style="width: 11rem;" Color="Color.Primary" OnClick="SubmitRegistration">Submit</MudButton>
+                                <MudButton Variant="Variant.Filled" Size="Size.Large" Style="width: 11rem;" Color="Color.Primary" OnClick="SubmitRegistration" Disabled="isSubmitting">
+
+                                    @if (isSubmitting)
+                                    {
+                                        <MudProgressCircular Indeterminate="true"
+                                                             Size="Size.Small"
+                                                             Class="mr-2"
+                                        Color="Color.Tertiary" />
+                                    }
+                                    else
+                                    {
+                                        <p>Submit</p>
+                                                                        
+                                    }
+                                </MudButton>
     
                             </div>
                             <p class="error-message">@errorMessage</p>

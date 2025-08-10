@@ -22,7 +22,7 @@
     <MudDataGrid T="RegisteredTroopLeader" 
         MultiSelection="true" 
         RowsPerPage="8" 
-        ColumnResizeMode="ResizeMode.Container"
+        ColumnResizeMode="ResizeMode.Column"
         Groupable="true"
         Striped="true" 
         Items="@FilteredElements" 
@@ -37,8 +37,8 @@
         </ToolBarContent>
         <Columns>
             <SelectColumn T="RegisteredTroopLeader" />
-            <PropertyColumn Property="x => x.LeaderId" Title="ID" />
-            <TemplateColumn CellClass="d-flex justify-end">
+            <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false" />
+            <TemplateColumn CellClass="justify-end">
                 <CellTemplate>
                     <MudStack Row>
                         <MudButton Size="@Size.Small"
@@ -54,19 +54,21 @@
             <TemplateColumn Title="Full Name" Sortable="true">
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial}.")} {context.Item.LeaderLname}")
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial[0]}.")} {context.Item.LeaderLname}")
                     </span>
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.LeaderPosition" Title="Position" Sortable="false" Filterable="false"
-                            @bind-Grouping="_groupByPosition"
-                            @bind-GroupByOrder="_groupOrder"
-                            @bind-GroupExpanded="_groupExpanded">
+            <PropertyColumn Property="x => x.LeaderPosition"
+                            Title="Position"
+                            Sortable="false"
+                            Filterable="false"
+                            Grouping="true"
+                            GroupByOrder="_groupOrder"
+                            GroupExpanded="_groupExpanded">
+
             </PropertyColumn>
-            <PropertyColumn Property="x => x.LeaderTorNT" Title="T or NT" />
-            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Status" />
-            <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" />
-            <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" />
+            <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.LeaderEmail" Title="Email" />
         </Columns>
         <PagerContent>

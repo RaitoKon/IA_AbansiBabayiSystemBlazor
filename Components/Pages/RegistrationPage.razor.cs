@@ -27,7 +27,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
         private string currentMInitial = string.Empty;
         private string currentLname = string.Empty;
         private string currentStatus = string.Empty;
-        private DateOnly? currentBirthDate = null;
+        private DateTime? currentBirthDate = null;
         private string currentBeneficiary = string.Empty;
         private string currentEmail = string.Empty;
         private string selectedLeaderName = string.Empty;
@@ -54,7 +54,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             select new TroopLeaderInfo
             {
                 LeaderId = leader.LeaderId,
-                FullName = leader.LeaderFname + " " + leader.LeaderMInitial + " " + leader.LeaderLname
+                FullName = leader.LeaderFname + " " + leader.LeaderMInitial[0] + ". " + leader.LeaderLname
             }
         )
         .Distinct()
@@ -135,169 +135,181 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             NavigationManager.NavigateTo("/landingPage", forceLoad: true);
         }
 
+        private bool isSubmitting = false;
         private async Task SubmitRegistration()
         {
-            errorMessage = "";
-            await Task.Delay(2000);
-
-            if (currentRole == "Troop Leader") { 
-
-                errorMessage = string.Empty;
-                successMessage = string.Empty;
-
-                if (string.IsNullOrWhiteSpace(currentFname) ||
-                    string.IsNullOrWhiteSpace(currentMInitial) ||
-                    string.IsNullOrWhiteSpace(currentLname) ||
-                    string.IsNullOrWhiteSpace(currentPosition) ||
-                    string.IsNullOrWhiteSpace(currentRole) ||
-                    string.IsNullOrWhiteSpace(currentTorNT) ||
-                    string.IsNullOrWhiteSpace(currentStatus) ||
-                    !currentBirthDate.HasValue ||
-                    string.IsNullOrWhiteSpace(currentBeneficiary) ||
-                    string.IsNullOrWhiteSpace(currentEmail)
-                    )
-                {
-                    errorMessage = "Please fill in all required fields.";
-                    return;
-                }
-
-                int? validatedtroopNumber = null;
-                if (!string.IsNullOrWhiteSpace(currentTroopNumber))
-                {
-                    if (int.TryParse(currentTroopNumber, out var parsedNumber))
-                    {
-                        validatedtroopNumber = parsedNumber;
-                    }
-                    else
-                    {
-                        errorMessage = "Invalid troop number.";
-                        return;
-                    }
-                }
-
-                try
-                {
-
-                    var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                    var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                    var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                    var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-
-                    if (existingLeader != null || registerdLeader != null || existingMember != null || registerdMember != null)
-                    {
-                        errorMessage = "Your email is already registered. Proceed to log-in";
-                        return;
-                    }
-
-                    var newLeader = new TroopLeaderRegistration
-                    {
-                        LeaderFname = currentFname,
-                        LeaderMInitial = currentMInitial,
-                        LeaderLname = currentLname,
-                        LeaderPosition = currentPosition,
-                        CoLeaderTroopNumber = validatedtroopNumber,
-                        LeaderRole = currentRole,
-                        LeaderTorNT = currentTorNT,
-                        LeaderRegStatus = currentStatus,
-                        LeaderEmail = currentEmail,
-                        LeaderBeneficiary = currentBeneficiary,
-                        LeaderBirthdate = currentBirthDate
-                    };
-
-                    AppDbContext.TroopLeaders.Add(newLeader);
-                    await AppDbContext.SaveChangesAsync();
-
-                    await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
-
-                    NavigationManager.NavigateTo("/registrationConfirmedPage");
-                }
-                catch (Exception ex)
-                {
-                    errorMessage = $"An error occurred: {ex.Message}";
-                }
-            }
-
-            else if (new[] { "Twinklers", "Star", "Junior", "Senior", "Cadet" }.Contains(currentRole))
+            isSubmitting = true;
+            try
             {
 
-                errorMessage = string.Empty;
-                successMessage = string.Empty;
+                errorMessage = "";
+                await Task.Delay(2000);
 
-                if (string.IsNullOrWhiteSpace(currentTroopNumber) ||
-                    string.IsNullOrWhiteSpace(currentFname) ||
-                    string.IsNullOrWhiteSpace(currentMInitial) ||
-                    string.IsNullOrWhiteSpace(currentLname) ||
-                    string.IsNullOrWhiteSpace(currentRole) ||
-                    string.IsNullOrWhiteSpace(currentGradeOrYear) ||
-                    string.IsNullOrWhiteSpace(currentStatus) ||
-                    !currentBirthDate.HasValue ||
-                    string.IsNullOrWhiteSpace(currentBeneficiary) ||
-                    string.IsNullOrWhiteSpace(currentEmail)
-                    )
-                {
-                    errorMessage = "Please fill in all required fields.";
-                    return;
-                }
-
-                int? validatedtroopNumber = null;
-                if (!string.IsNullOrWhiteSpace(currentTroopNumber))
-                {
-                    if (int.TryParse(currentTroopNumber, out var parsedNumber))
-                    {
-                        validatedtroopNumber = parsedNumber;
-                    }
-                    else
-                    {
-                        errorMessage = "Invalid troop number.";
-                        return;
-                    }
-                }
-
-                try
+                if (currentRole == "Troop Leader")
                 {
 
-                    var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                    var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                    var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                    var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+                    errorMessage = string.Empty;
+                    successMessage = string.Empty;
 
-                    if (existingMember != null || registerdMember!= null)
+                    if (string.IsNullOrWhiteSpace(currentFname) ||
+                        string.IsNullOrWhiteSpace(currentMInitial) ||
+                        string.IsNullOrWhiteSpace(currentLname) ||
+                        string.IsNullOrWhiteSpace(currentPosition) ||
+                        string.IsNullOrWhiteSpace(currentRole) ||
+                        string.IsNullOrWhiteSpace(currentTorNT) ||
+                        string.IsNullOrWhiteSpace(currentStatus) ||
+                        !currentBirthDate.HasValue ||
+                        string.IsNullOrWhiteSpace(currentBeneficiary) ||
+                        string.IsNullOrWhiteSpace(currentEmail)
+                        )
                     {
-                        errorMessage = "Your email is already used. Proceed to log-in";
+                        errorMessage = "Please fill in all required fields.";
                         return;
                     }
 
-                    var newMember = new TroopMemberRegistration
+                    int? validatedtroopNumber = null;
+                    if (!string.IsNullOrWhiteSpace(currentTroopNumber))
                     {
-                        TroopMemFname = currentFname,
-                        TroopMemMinitial = currentMInitial,
-                        TroopMemLname = currentLname,
-                        TroopMemTroopNumber = validatedtroopNumber,
-                        TroopMemRole = currentRole,
-                        TroopMemRegStatus = currentStatus,
-                        TroopMemEmail = currentEmail,
-                        TroopMemBeneficiary = currentBeneficiary,
-                        TroopMemBirthdate = currentBirthDate,
-                        TroopMemGradeOrYear = currentGradeOrYear
-                    };
+                        if (int.TryParse(currentTroopNumber, out var parsedNumber))
+                        {
+                            validatedtroopNumber = parsedNumber;
+                        }
+                        else
+                        {
+                            errorMessage = "Invalid troop number.";
+                            return;
+                        }
+                    }
 
-                    AppDbContext.TroopMembers.Add(newMember);
-                    await AppDbContext.SaveChangesAsync();
+                    try
+                    {
 
-                    await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
+                        var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+                        var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
 
-                    NavigationManager.NavigateTo("/registrationConfirmedPage");
+                        if (existingLeader != null || registerdLeader != null || existingMember != null || registerdMember != null)
+                        {
+                            errorMessage = "Your email is already registered. Proceed to log-in";
+                            return;
+                        }
+
+                        var newLeader = new TroopLeaderRegistration
+                        {
+                            LeaderFname = currentFname,
+                            LeaderMInitial = currentMInitial,
+                            LeaderLname = currentLname,
+                            LeaderPosition = currentPosition,
+                            CoLeaderTroopNumber = validatedtroopNumber,
+                            LeaderRole = currentRole,
+                            LeaderTorNT = currentTorNT,
+                            LeaderRegStatus = currentStatus,
+                            LeaderEmail = currentEmail,
+                            LeaderBeneficiary = currentBeneficiary,
+                            LeaderBirthdate = currentBirthDate
+                        };
+
+                        AppDbContext.TroopLeaders.Add(newLeader);
+                        await AppDbContext.SaveChangesAsync();
+
+                        await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
+
+                        NavigationManager.NavigateTo("/registrationConfirmedPage");
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessage = $"An error occurred: {ex.Message}";
+                    }
                 }
-                catch (Exception ex)
+
+                else if (new[] { "Twinklers", "Star", "Junior", "Senior", "Cadet" }.Contains(currentRole))
                 {
-                    errorMessage = $"An error occurred: {ex.Message}";
-                }
 
+                    errorMessage = string.Empty;
+                    successMessage = string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(currentTroopNumber) ||
+                        string.IsNullOrWhiteSpace(currentFname) ||
+                        string.IsNullOrWhiteSpace(currentMInitial) ||
+                        string.IsNullOrWhiteSpace(currentLname) ||
+                        string.IsNullOrWhiteSpace(currentRole) ||
+                        string.IsNullOrWhiteSpace(currentGradeOrYear) ||
+                        string.IsNullOrWhiteSpace(currentStatus) ||
+                        !currentBirthDate.HasValue ||
+                        string.IsNullOrWhiteSpace(currentBeneficiary) ||
+                        string.IsNullOrWhiteSpace(currentEmail)
+                        )
+                    {
+                        errorMessage = "Please fill in all required fields.";
+                        return;
+                    }
+
+                    int? validatedtroopNumber = null;
+                    if (!string.IsNullOrWhiteSpace(currentTroopNumber))
+                    {
+                        if (int.TryParse(currentTroopNumber, out var parsedNumber))
+                        {
+                            validatedtroopNumber = parsedNumber;
+                        }
+                        else
+                        {
+                            errorMessage = "Invalid troop number.";
+                            return;
+                        }
+                    }
+
+                    try
+                    {
+
+                        var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+                        var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+
+                        if (existingMember != null || registerdMember != null)
+                        {
+                            errorMessage = "Your email is already used. Proceed to log-in";
+                            return;
+                        }
+
+                        var newMember = new TroopMemberRegistration
+                        {
+                            TroopMemFname = currentFname,
+                            TroopMemMinitial = currentMInitial,
+                            TroopMemLname = currentLname,
+                            TroopMemTroopNumber = validatedtroopNumber,
+                            TroopMemRole = currentRole,
+                            TroopMemRegStatus = currentStatus,
+                            TroopMemEmail = currentEmail,
+                            TroopMemBeneficiary = currentBeneficiary,
+                            TroopMemBirthdate = currentBirthDate,
+                            TroopMemGradeOrYear = currentGradeOrYear
+                        };
+
+                        AppDbContext.TroopMembers.Add(newMember);
+                        await AppDbContext.SaveChangesAsync();
+
+                        await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
+
+                        NavigationManager.NavigateTo("/registrationConfirmedPage");
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessage = $"An error occurred: {ex.Message}";
+                    }
+
+
+                }
+                else
+                {
+                    errorMessage = "Invalid role. Please select a valid scout level.";
+                }
 
             }
-            else
+            finally
             {
-                errorMessage = "Invalid role. Please select a valid scout level.";
+                isSubmitting = false;
             }
         }
 

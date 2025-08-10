@@ -32,7 +32,7 @@ public partial class TroopLeaderRegistration
     public string? LeaderMInitial { get; set; }
 
     [Required]
-    public DateOnly? LeaderBirthdate { get; set; }
+    public DateTime? LeaderBirthdate { get; set; }
 
     [Required]
     public string? LeaderBeneficiary { get; set; }

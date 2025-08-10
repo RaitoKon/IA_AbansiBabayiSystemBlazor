@@ -43,7 +43,7 @@
         <Columns>
             <SelectColumn T="TroopLeaderRegistration"/>
             <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false" />
-            <TemplateColumn CellClass=" justify-end">           
+            <TemplateColumn CellClass="justify-end">           
                 <CellTemplate>
                     <MudStack Row>
                         <MudButton Size="@Size.Small"
@@ -59,15 +59,25 @@
             <TemplateColumn Title="Full Name" Sortable="true" >
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                    @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial}.")} {context.Item.LeaderLname}")
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial[0]}.")} {context.Item.LeaderLname}")
                     </span>
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.LeaderPosition" Title="Position" Sortable="false" Filterable="false"
-                @bind-Grouping="_groupByPosition"
-                @bind-GroupByOrder="_groupOrder"
-                @bind-GroupExpanded="_groupExpanded">
+            <PropertyColumn Property="x => x.LeaderPosition"
+                            Title="Position"
+                            Sortable="false"
+                            Filterable="false"
+                            Grouping="true"
+                            Hidden="true"
+                            GroupByOrder="@_groupOrder"
+                            GroupExpanded="@_groupExpanded">
+                            
             </PropertyColumn>
+            <TemplateColumn Title="Birth Date" Sortable="false" Filterable="false">
+                <CellTemplate Context="context">
+                    @context.Item.LeaderBirthdate?.ToString("MMMM dd, yyyy")
+                </CellTemplate>
+            </TemplateColumn>
             <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.LeaderEmail" Title="Email" />
@@ -124,12 +134,15 @@
             }
         </MessageContent>
         <YesButton>
-            <MudButton Variant="Variant.Filled"
-            Color="@(_isDeleteMode ? Color.Error : Color.Secondary)"
-            StartIcon="@(_isDeleteMode ? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)"
-            OnClick="async () => await ConfirmActionAsync()">
-                Confirm
-            </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="@(_isDeleteMode ? Color.Error : Color.Secondary)"
+                           StartIcon="@(_isDeleteMode ? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)"
+                           Disabled="isSubmitting"
+                           OnClick="async () => await ConfirmActionAsync()">
+                    Confirm
+                </MudButton>
+
         </YesButton>
     </MudMessageBox>
 
@@ -272,25 +285,7 @@
 
     private async Task RegisterPerson(TroopLeaderRegistration person)
     {
-        // Step 1: Move to RegisteredTroopLeader
-        var registeredLeader = new RegisteredTroopLeader
-            {
-                LeaderFname = person.LeaderFname,
-                LeaderMInitial = person.LeaderMInitial,
-                LeaderLname = person.LeaderLname,
-                LeaderPosition = person.LeaderPosition,
-                LeaderRole = person.LeaderRole,
-                LeaderTorNT = person.LeaderTorNT,
-                LeaderRegStatus = person.LeaderRegStatus,
-                LeaderBirthdate = person.LeaderBirthdate,
-                LeaderBeneficiary = person.LeaderBeneficiary,
-                LeaderEmail = person.LeaderEmail,
-            };
-
-        GetTroopLeaderData.RegisteredTroopLeaders.Add(registeredLeader);
-        await GetTroopLeaderData.SaveChangesAsync();
-
-        // Step 2: Create login account
+        // Step 1: Create login account
         string Sanitize(string input) => new string(input.Where(char.IsLetterOrDigit).ToArray());
 
         var first = Sanitize(person.LeaderFname);
@@ -300,12 +295,12 @@
         var userNewEmail = $"{first}.{last}-{year}@igsc.com.ph".ToLower();
 
         var newUser = new ApplicationUser
-            {
-                UserName = person.LeaderEmail,
-                Email = person.LeaderEmail,
-                EmailConfirmed = true,
-                MustChangePassword = true
-            };
+        {
+            UserName = userNewEmail,
+            Email = userNewEmail,
+            EmailConfirmed = true,
+            MustChangePassword = true
+        };
 
         var tempPassword = GenerateTemporaryPassword.GenerateTempPassword();
 
@@ -320,6 +315,24 @@
             return;
         }
 
+        // Step 2: Move to RegisteredTroopLeader
+        var registeredLeader = new RegisteredTroopLeader
+            {
+                LeaderFname = person.LeaderFname,
+                LeaderMInitial = person.LeaderMInitial,
+                LeaderLname = person.LeaderLname,
+                LeaderPosition = person.LeaderPosition,
+                LeaderRole = person.LeaderRole,
+                LeaderTorNT = person.LeaderTorNT,
+                LeaderRegStatus = person.LeaderRegStatus,
+                LeaderBirthdate = person.LeaderBirthdate,
+                LeaderBeneficiary = person.LeaderBeneficiary,
+                LeaderEmail = userNewEmail,
+            };
+
+        GetTroopLeaderData.RegisteredTroopLeaders.Add(registeredLeader);
+        await GetTroopLeaderData.SaveChangesAsync();
+
         await UserManager.AddToRoleAsync(newUser, "Troop Leader");
 
         // Step 3: Link RegisteredTroopLeader to user account
@@ -332,7 +345,7 @@
         GetTroopLeaderData.RegisteredTroopLeaderAccounts.Add(accountLink);
         await GetTroopLeaderData.SaveChangesAsync();
 
-        await EmailService.SendRegisteredConfirmationEmailAsync(person.LeaderEmail, person.LeaderFname, person.LeaderLname, tempPassword);
+        await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.LeaderEmail, person.LeaderFname, tempPassword);
 
         // Step 4: Remove from pending registration
         GetTroopLeaderData.TroopLeaders.Remove(person);
@@ -359,6 +372,8 @@
 
         Snackbar.Add($"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been removed successfully!", Severity.Success);
     }
+
+    private bool isSubmitting;
 
     private async Task ConfirmActionAsync()
     {
@@ -394,6 +409,7 @@
         _isSinglePersonClicked = false;
         _isMultiplePersonsClicked = false;
     }
+
 
     private bool _groupByPosition = true; // enable grouping on load
     private int _groupOrder = 0;              // group priority

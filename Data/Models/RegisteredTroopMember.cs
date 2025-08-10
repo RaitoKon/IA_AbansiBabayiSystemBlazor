@@ -17,7 +17,7 @@ public partial class RegisteredTroopMember
 
     public string? TroopMemMinitial { get; set; }
 
-    public DateOnly? TroopMemBirthdate { get; set; }
+    public DateTime? TroopMemBirthdate { get; set; }
 
     public string? TroopMemGradeOrYear { get; set; }
 

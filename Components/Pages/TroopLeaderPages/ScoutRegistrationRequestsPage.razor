@@ -22,8 +22,8 @@
 <MudDialogProvider />
 <div class="hero-content">
 
-    <MudDataGrid T="TroopMemberRegistration" MultiSelection="true" RowsPerPage="8" ColumnResizeMode="ResizeMode.Container" Striped="true" Items="@FilteredElements" SortMode="SortMode.Multiple"
-    Filterable="true" QuickFilter="@_quickFilter" Hideable="true" SelectedItems="@GetSelectedItems()" SelectedItemsChanged="SelectedItemsChanged">
+    <MudDataGrid T="TroopMemberRegistration" MultiSelection="true" RowsPerPage="8" ColumnResizeMode="ResizeMode.Column" Striped="true" Items="@FilteredElements" SortMode="SortMode.Multiple"
+    Filterable="true" Groupable="true" QuickFilter="@_quickFilter" Hideable="true" SelectedItems="@GetSelectedItems()" SelectedItemsChanged="SelectedItemsChanged">
         <ToolBarContent>
             <MudText Typo="Typo.h6">Scout Registration Requests</MudText>
             <MudSpacer />
@@ -32,7 +32,7 @@
         </ToolBarContent>
         <Columns>
             <SelectColumn T="TroopMemberRegistration"/>
-            <PropertyColumn Property="x => x.TroopMemId" Title="ID" />
+            <PropertyColumn Property="x => x.TroopMemId" Title="ID" Sortable="false" Filterable="false" />
             <TemplateColumn CellClass="d-flex justify-end">           
                 <CellTemplate>
                     <MudStack Row>
@@ -46,16 +46,29 @@
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.TroopMemRole" Title="Role" />
-            <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="ScoutNumber" />
-            <PropertyColumn Property="x => x.TroopMemFname" Title="First Name"/>
-            <PropertyColumn Property="x => x.TroopMemMinitial" Title="M.I" />
-            <PropertyColumn Property="x => x.TroopMemLname" Title="Last Name" />
-            <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" />
-            <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Registration Status" />
-            <PropertyColumn Property="x => x.TroopMemBirthdate" Title="Birth Date" />
-            <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" />
+            <PropertyColumn Property="x => x.TroopMemRole" 
+                            Title="Role" 
+                            Hidden="true"
+                            Grouping="true"
+                            GroupByOrder="@_groupOrder"
+                            GroupExpanded="@_groupExpanded"/>
+            <TemplateColumn Title="Full Name" Sortable="true">
+                <CellTemplate Context="context">
+                    <span style="white-space: nowrap">
+                        @($"{context.Item.TroopMemFname}{(string.IsNullOrWhiteSpace(context.Item.TroopMemMinitial) ? "" : $" {context.Item.TroopMemMinitial[0]}.")} {context.Item.TroopMemLname}")
+                    </span>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" Filterable="false" />
+            <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Registration Status" Filterable="false" />
+            <TemplateColumn Title="Birth Date" Sortable="false" Filterable="false">
+                <CellTemplate Context="context">
+                    @context.Item.TroopMemBirthdate?.ToString("MMMM dd, yyyy")
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" Filterable="false" />
             <PropertyColumn Property="x => x.TroopMemEmail" Title="Email" />
+            <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="ScoutNumber" Filterable="false"/>
         </Columns>
         <PagerContent>
 
@@ -80,11 +93,11 @@
             {
                 @if (_isDeleteMode)
                 {
-                    <div>Are you sure you want to <b>delete</b> the request of <b>@_selectedPerson.TroopMemFname @_selectedPerson.TroopMemLname</b>?</div>
+                    <div>Are you sure you want to delete the request of <b>@_selectedPerson.TroopMemFname @_selectedPerson.TroopMemLname</b>?</div>
                 }
                 else
                 {
-                    <div>Are you sure you want to <b>register</b> <b>@_selectedPerson.TroopMemFname @_selectedPerson.TroopMemLname</b> as a Scout?</div>
+                    <div>Are you sure you want to register <b>@_selectedPerson.TroopMemFname @_selectedPerson.TroopMemLname</b> as a Scout?</div>
                 }
             }
             else if (_isMultiplePersonsClicked && _selectedItems.Any())
@@ -412,5 +425,9 @@
         _isSinglePersonClicked = false;
         _isMultiplePersonsClicked = false;
     }
+
+    private bool _groupByPosition = true; // enable grouping on load
+    private int _groupOrder = 0;              // group priority
+    private bool _groupExpanded = true;       // whether it's expanded initially
 }
 
