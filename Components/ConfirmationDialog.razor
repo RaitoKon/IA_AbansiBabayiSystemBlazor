@@ -1,0 +1,56 @@
+﻿@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        @((MarkupString)Content)
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="@(IsDelete? Color.Error: Color.Primary)"
+                   Variant="Variant.Filled"
+                   OnClick="ConfirmActionAsync"
+                   Style="width: 7rem;">
+
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Indeterminate="true"
+                                     Size="Size.Small"
+                                     Color="Color.Tertiary"/>
+            }
+            else
+            {
+                <MudIcon Icon="@(IsDelete? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)" />
+                @(IsDelete ? "Delete" : "Confirm")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public string Content { get; set; }
+
+    [Parameter]
+    public bool IsDelete { get; set; }
+
+    [Parameter]
+    public bool isSubmitting { get; set; }
+
+    private async Task ConfirmActionAsync()
+    {
+        isSubmitting = true;
+
+        try
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+            StateHasChanged();
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

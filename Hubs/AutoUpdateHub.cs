@@ -7,6 +7,7 @@ namespace IA_AbansiBabayiSystemBlazor.Hubs
         public async Task BroadcastUpdate(string tableName)
         {
             await Clients.All.SendAsync("ReceiveUpdate", tableName);
+            
         }
     }
 }

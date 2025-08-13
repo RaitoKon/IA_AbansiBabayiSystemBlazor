@@ -1,7 +1,10 @@
 ﻿
 using IA_AbansiBabayiSystemBlazor.Data.Models;
+using IA_AbansiBabayiSystemBlazor.Hubs;
 using IA_AbansiBabayiSystemBlazor.Service;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.JSInterop;
@@ -33,6 +36,9 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
         private string selectedLeaderName = string.Empty;
 
         private List<TroopLeaderInfo> troopLeaders = new();
+
+        [Inject]
+        private IHubContext<AutoUpdateHub> HubContext { get; set; } = default!;
 
         public class TroopLeaderInfo
         {
@@ -212,8 +218,9 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 
                         AppDbContext.TroopLeaders.Add(newLeader);
                         await AppDbContext.SaveChangesAsync();
+                        await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopLeaderRegistration");
 
-                        await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
+                        //await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
 
                         NavigationManager.NavigateTo("/registrationConfirmedPage");
                     }
@@ -289,8 +296,9 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 
                         AppDbContext.TroopMembers.Add(newMember);
                         await AppDbContext.SaveChangesAsync();
+                        await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopMemberRegistration");
 
-                        await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
+                        //await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
 
                         NavigationManager.NavigateTo("/registrationConfirmedPage");
                     }

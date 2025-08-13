@@ -45,7 +45,6 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddScoped<PassedDataRoute>();
 builder.Services.AddMudServices();
 builder.Services.AddSignalR();
-builder.Services.AddSingleton(typeof(TableDataService<>));
 builder.Services.AddAuthorization();
 
 // --- Email, Http, Controllers ---
@@ -119,33 +118,6 @@ var app = builder.Build();
 //    }
 //}
 
-
-
-
-//using (var scope = app.Services.CreateScope())
-//{
-//    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-//    var user = await userManager.FindByEmailAsync("tairodeoni.garcia-22@cpu.edu.ph");
-
-//    if (user != null)
-//    {
-//        var hasPassword = await userManager.HasPasswordAsync(user);
-//        if (!hasPassword)
-//        {
-//            var result = await userManager.AddPasswordAsync(user, "Temp@123");
-//            if (result.Succeeded)
-//            {
-//                Console.WriteLine("Password reset successfully!");
-//            }
-//            else
-//            {
-//                foreach (var error in result.Errors)
-//                    Console.WriteLine($"Error: {error.Description}");
-//            }
-//        }
-//    }
-//}
-
 // --- Role Seeder (optional if you plan to add roles) ---
 using (var scope = app.Services.CreateScope())
 {
@@ -175,5 +147,7 @@ app.MapControllers();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapHub<AutoUpdateHub>("/autoupdatehub");
 
 app.Run();

@@ -8,15 +8,28 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="wwwroot\bootstrap\**" />
-    <Content Remove="wwwroot\bootstrap\**" />
-    <EmbeddedResource Remove="wwwroot\bootstrap\**" />
-    <None Remove="wwwroot\bootstrap\**" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <None Include="wwwroot\app.css" />
+    <None Include="wwwroot\favicon.png" />
     <None Include="wwwroot\icons\.DS_Store" />
+    <None Include="wwwroot\icons\Cart.svg" />
+    <None Include="wwwroot\icons\check_circle.png" />
+    <None Include="wwwroot\icons\dropdown.svg" />
+    <None Include="wwwroot\icons\Menu.svg" />
     <None Include="wwwroot\images\.DS_Store" />
+    <None Include="wwwroot\images\BG-Base.png" />
+    <None Include="wwwroot\images\BG-Base1.png" />
+    <None Include="wwwroot\images\BG-FINAL.png" />
+    <None Include="wwwroot\images\BG-Vector-Cadet.png" />
+    <None Include="wwwroot\images\BG-Vector-Junior.png" />
+    <None Include="wwwroot\images\BG-Vector-Senior.png" />
+    <None Include="wwwroot\images\BG-Vector-Star.png" />
+    <None Include="wwwroot\images\BG-Vector-Twinklers.png" />
+    <None Include="wwwroot\images\BG-Vector.png" />
+    <None Include="wwwroot\images\chief-girl-scout-medal-scheme8.jpg" />
+    <None Include="wwwroot\images\default-scout-avatar.jpg" />
+    <None Include="wwwroot\images\GIRL SCOUT LOGO.png" />
+    <None Include="wwwroot\images\News1.jpg" />
+    <None Include="wwwroot\images\News2.jpg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,6 +38,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.12" />
     <PackageReference Include="MudBlazor" Version="8.7.0" />
