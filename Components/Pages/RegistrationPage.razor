@@ -9,8 +9,8 @@
 @inject IJSRuntime JSRuntime
 @inject PassedDataRoute PassedDataRoute
 @inject ApplicationDbContext AppDbContext
-@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject EmailService EmailService
+@inject TableDataService<RegisteredTroopLeader> RegisteredService
 
 @page "/registrationPage"
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme"/>

@@ -45,6 +45,7 @@
 
         try
         {
+            await Task.Delay(3000);
             MudDialog.Close(DialogResult.Ok(true));
             StateHasChanged();
         }

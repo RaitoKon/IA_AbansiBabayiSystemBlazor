@@ -50,22 +50,16 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             currentRole = PassedDataRoute.ScoutLevel;
             currentStatus = PassedDataRoute.Status;
 
-            troopLeaders = await (
-            from leader in AppDbContext.RegisteredTroopLeaders
-            join account in AppDbContext.RegisteredTroopLeaderAccounts on leader.LeaderId equals account.LeaderId
-            join userRole in AppDbContext.UserRoles on account.Id equals userRole.UserId
-            join role in AppDbContext.Roles on userRole.RoleId equals role.Id
-            where role.Name == "Troop Leader"
-                && leader.LeaderPosition == "Leader"
-            select new TroopLeaderInfo
-            {
-                LeaderId = leader.LeaderId,
-                FullName = leader.LeaderFname + " " + leader.LeaderMInitial[0] + ". " + leader.LeaderLname
-            }
-        )
-        .Distinct()
-        .OrderBy(x => x.LeaderId)
-        .ToListAsync();
+            troopLeaders = await AppDbContext.RegisteredTroopLeaders
+         .Where(leader => leader.LeaderPosition == "Leader" &&
+                          leader.LeaderRole == "Troop Leader")
+         .Select(leader => new TroopLeaderInfo
+         {
+             LeaderId = leader.LeaderId,
+             FullName = leader.LeaderFname + " " + leader.LeaderMInitial[0] + ". " + leader.LeaderLname
+         })
+         .OrderBy(x => x.LeaderId)
+         .ToListAsync();
         }
 
         private bool toggleRegistrationDropdown = false;

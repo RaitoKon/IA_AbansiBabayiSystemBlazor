@@ -123,24 +123,12 @@
     TroopService.Data?? Enumerable.Empty<TroopLeaderRegistration>();
      
     private HashSet<TroopLeaderRegistration> _selectedItems = new();
-    private Dictionary<int, TroopLeaderRegistration> _persistentSelection = new();
-
+    private HashSet<int> _selectedIds = new();
 
     void SelectedItemsChanged(HashSet<TroopLeaderRegistration> selected)
     {
-        // Update persistent selection
-        foreach (var item in selected)
-            _persistentSelection[item.LeaderId] = item;
-
-        // Remove unselected items
-        var idsToRemove = _persistentSelection.Keys.Except(selected.Select(x => x.LeaderId)).ToList();
-        foreach (var id in idsToRemove)
-            _persistentSelection.Remove(id);
-
-        // Sync _selectedItems to reflect persistent selection
-        _selectedItems = new HashSet<TroopLeaderRegistration>(
-            TroopService.Data.Where(x => _persistentSelection.ContainsKey(x.LeaderId))
-        );
+        _selectedItems = selected;
+        _selectedIds = selected.Select(x => x.LeaderId).ToHashSet();
 
         multipleButtonDisabled = !_selectedItems.Any();
         singleButtonDisabled = _selectedItems.Any();
@@ -183,7 +171,10 @@
 
     private async void HandleDataChanged()
     {
-
+        _selectedItems = new HashSet<TroopLeaderRegistration>(
+            TroopService.Data.Where(x => _selectedIds.Contains(x.LeaderId))
+        );
+         
         await InvokeAsync(StateHasChanged); // Refresh UI when data changes
     }
 
