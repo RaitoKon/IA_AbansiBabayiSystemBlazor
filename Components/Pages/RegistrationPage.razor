@@ -14,6 +14,7 @@
 
 @page "/registrationPage"
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme"/>
+<MudPopoverProvider />
 
 <!DOCTYPE html>
 
@@ -115,7 +116,7 @@
                                             <div class="input-dropdown" @onclick="ToggleTroopLeaderDropdown">
                                                 <div style="display: flex; flex-direction: column;">
                                                     <label for="troop leader number">Troop Leader</label>
-                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : selectedLeaderName)</p>
+                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : currentTroopNumber + " -" + selectedLeaderName)</p>
                                                 </div>
                                                 <img src="icons/dropdown.svg" alt="Troop Dropdown Button" class="dropdown-button" />
                                                 <input type="text" value="@currentTroopNumber" hidden />
@@ -157,10 +158,18 @@
 
                                 <!-- Age & Birthdate -->
                                 <div class="grid-row">
-                                    <div class="input-design">
+                                    <div class="input-design" style="z-index: 3;">
                                         <label for="birthdate">Birthdate</label>
                                                              @* CurrentBirthdate *@
-                                    <input type="date" @bind="currentBirthDate" required />
+                                        <MudDatePicker @bind-Date="currentBirthDate"
+                                                       PickerVariant="PickerVariant.Dialog"
+                                                       AutoClose="true"                                                       
+                                                       Underline="false"
+                                                       Color="Color.Primary"
+                                                       DateFormat="MM/dd/yyyy"
+                                                       OpenTo="OpenTo.Year"
+                                                       AdornmentColor="Color.Primary"/>
+                                                      
                                     </div>
 
                                     <div class="input-dropdown-toggle">
@@ -189,7 +198,12 @@
                                     <div class="input-design">
                                         <label for="beneficiary">Beneficiary</label>
                                                            @* currentBeneficiary *@
-                                    <input type="text" @bind="currentBeneficiary" required />
+                                        <div style="display: flex; justify-content: space-between">
+                                            <input style="width: 90%; height: 22.8px" type="text" @bind="currentBeneficiary" required />
+                                            <MudTooltip ShowOnHover="true" Text="Beneficiary: Person designated for emergencies or insurance claims." Arrow="true" Color="Color.Tertiary">
+                                                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Medium" Color="Color.Primary" />
+                                            </MudTooltip>
+                                        </div>
                                     </div>
                                     <div class="input-design">
                                         <label for="email">Email</label>
@@ -224,7 +238,7 @@
                                         <div class="input-dropdown" @onclick="ToggleTroopLeaderDropdown">
                                             <div style="display: flex; flex-direction: column;">
                                                 <label for="troop leader number">Troop Leader</label>
-                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : selectedLeaderName)</p>
+                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : currentTroopNumber + " - " + selectedLeaderName)</p>
                                             </div>
                                             <img src="icons/dropdown.svg" alt="Troop Dropdown Button" class="dropdown-button" />
                                             <input type="text" value="@currentTroopNumber" hidden />
@@ -266,7 +280,14 @@
                                 <div class="grid-row">
                                     <div class="input-design">
                                         <label for="birth date">Birth Date</label>
-                                        <input type="date" id="birth-date" @bind="currentBirthDate" required />
+                                        <MudDatePicker @bind-Date="currentBirthDate"
+                                                       PickerVariant="PickerVariant.Dialog"
+                                                       AutoClose="true"
+                                                       Underline="false"
+                                                       Color="Color.Primary"
+                                                       DateFormat="MM/dd/yyyy"
+                                                       OpenTo="OpenTo.Year"
+                                                       AdornmentColor="Color.Primary" />
                                     </div>
 
                                     <div class="input-design">
@@ -297,7 +318,12 @@
 
                                     <div class="input-design">
                                         <label for="beneficiary">Beneficiary</label>
-                                        <input type="text" id="beneficiary" @bind="currentBeneficiary" required />
+                                        <div style="display: flex; justify-content: space-between">
+                                            <input style="width: 90%; height: 22.8px" type="text" @bind="currentBeneficiary" required />
+                                            <MudTooltip ShowOnHover="true" Text="Beneficiary: Person designated for emergencies or insurance claims." Arrow="true" Color="Color.Tertiary">
+                                                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Medium" Color="Color.Primary" />
+                                            </MudTooltip>
+                                        </div>
                                     </div>
 
                                 </div>
@@ -347,8 +373,5 @@
         </div>
     </section>
 </div>
-
-
-
 
 

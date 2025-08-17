@@ -52,6 +52,17 @@ public class TableDataService<T> where T : class
         await NotifyChangedAsync();
     }
 
+    public async Task Update(T item)
+    {
+        using var context = _contextFactory.CreateDbContext();
+        context.Set<T>().Update(item);
+        await context.SaveChangesAsync();
+
+        // Reload to refresh local cache
+        await LoadDataAsync();
+        await NotifyChangedAsync();
+    }
+
     public async Task NotifyChangedAsync()
     {
         await _hubContext.Clients.All.SendAsync("ReceiveUpdate", typeof(T).Name);

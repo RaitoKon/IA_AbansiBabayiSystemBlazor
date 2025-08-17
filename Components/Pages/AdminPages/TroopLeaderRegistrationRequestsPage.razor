@@ -48,7 +48,7 @@
         </ToolBarContent>
         <Columns>
             <SelectColumn T="TroopLeaderRegistration"/>
-            <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false"/>
             <TemplateColumn CellClass="justify-end">           
                 <CellTemplate>
                     <MudStack Row>
@@ -79,14 +79,11 @@
                             GroupExpanded="@_groupExpanded">
                             
             </PropertyColumn>
-            <TemplateColumn Title="Birth Date" Sortable="false" Filterable="false">
-                <CellTemplate Context="context">
-                    @context.Item.LeaderBirthdate?.ToString("MMMM dd, yyyy")
-                </CellTemplate>
-            </TemplateColumn>
             <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" />
-            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" />
+            <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Editable="true" />
         </Columns>
         <PagerContent>
 
@@ -97,7 +94,7 @@
                 Color="@(delete_switch ? Color.Error : Color.Primary)"
                 OnClick="MultiplePersonClickedAsync"
                 Disabled="@multipleButtonDisabled">
-                    @(delete_switch ? "Delete" : "Register")
+                    @(delete_switch ? "Delete Selected" : "Register Selected")
                 </MudButton>
                 <MudSwitch @bind-Value="delete_switch" Label="Delete" LabelPlacement="Placement.Start" Color="Color.Error" />
             </div>
@@ -286,7 +283,7 @@
             title = isDelete ? "Confirm Deletion" : "Confirm Registration";
             message = isDelete
                 ? $"Are you sure you want to delete the request of <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b>?"
-                : $"Are you sure you want to register <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b> as a Troop Leader?";
+                : $"Are you sure you want to register <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b> as a <b>{_selectedPerson.LeaderPosition}</b>?";
         }
         else if (!isSingle && _selectedItems.Any())
         {
@@ -294,7 +291,7 @@
             var names = string.Join("</li><li>", _selectedItems.Select(p => $"{p.LeaderFname} {p.LeaderLname}"));
             message = isDelete
                 ? $"Are you sure you want to delete these registration requests?<ul><li>{names}</li></ul>"
-                : $"Are you sure you want to register these Troop Leaders?<ul><li>{names}</li></ul>";
+                : $"Are you sure you want to remove these Troop Leaders?<ul><li>{names}</li></ul>";
         }
         else
         {

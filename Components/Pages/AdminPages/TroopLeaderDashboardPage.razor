@@ -21,8 +21,9 @@
 <MudDialogProvider />
 <div class="hero-content">
 
-    <MudDataGrid T="RegisteredTroopLeader" 
-        MultiSelection="true"
+    <MudDataGrid T="RegisteredTroopLeader"
+        @ref="dataGrid"
+        MultiSelection="@(!_isEditMode)"
         RowsPerPage="8" 
         ColumnResizeMode="ResizeMode.Column"
         Groupable="true"
@@ -32,8 +33,14 @@
         Filterable="true" 
         QuickFilter="@_quickFilter" 
         Hideable="true" 
-        SelectedItems="_selectedItems" 
-        SelectedItemsChanged="SelectedItemsChanged">
+        SelectedItems="_selectedItems"      
+        SelectedItemsChanged="SelectedItemsChanged"
+        ReadOnly="@_readOnly"
+        EditMode="DataGridEditMode.Form"
+        EditTrigger="DataGridEditTrigger.Manual"
+        RowClick="@(args => OnRowClicked(args))"
+        CommittedItemChanges="OnCommitEdit">
+
 
         <ToolBarContent>
             <MudText Typo="Typo.h6">Troop Leader Dashboard</MudText>
@@ -42,7 +49,7 @@
             AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
         </ToolBarContent>
         <Columns>
-            <SelectColumn T="RegisteredTroopLeader" />
+            <SelectColumn T="RegisteredTroopLeader" Hidden="@(_isEditMode)" />
             <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false" />
             <TemplateColumn CellClass="justify-end">
                 <CellTemplate>
@@ -51,7 +58,7 @@
                         Variant="@Variant.Filled"
                         Color="Color.Error"
                         OnClick="@(() => SinglePersonClickedAsync(context.Item))"
-                        Disabled="@singleButtonDisabled">
+                        Disabled="@(singleButtonDisabled || _isEditMode)">
                             Delete
                         </MudButton>
                     </MudStack>
@@ -67,26 +74,31 @@
             <PropertyColumn Property="x => x.LeaderPosition"
                             Title="Position"
                             Sortable="false"
+                            Hidden="true"
                             Filterable="false"
                             Grouping="true"
                             GroupByOrder="_groupOrder"
-                            GroupExpanded="_groupExpanded">
+                            GroupExpanded="_groupExpanded"
+                            Editable="true">
 
             </PropertyColumn>
-            <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
-            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" />
-            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" />
+            <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
+            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Editable="true" />
         </Columns>
         <PagerContent>
             <MudDataGridPager T="RegisteredTroopLeader" Style="color: #25a129ff;" />
             <div class="pager-addOn">
                 <MudButton Size="@Size.Small"
-                Variant="@Variant.Filled"
-                Color="Color.Error"
-                OnClick="MultiplePersonClickedAsync"
-                Disabled="@multipleButtonDisabled">
-                    Delete Selected
+                    Variant="@Variant.Filled"
+                    Color="Color.Error"
+                    OnClick="MultiplePersonClickedAsync"
+                    Disabled="@(multipleButtonDisabled || _isEditMode)">
+                        Delete Selected
                 </MudButton>
+                <MudSwitch @bind-Value="@_isEditMode" Label="Edit Mode" LabelPlacement="Placement.Start" Color="Color.Primary" />
             </div>
         </PagerContent>
     </MudDataGrid>
@@ -102,6 +114,9 @@
     private bool isSubmitting = false;
     public bool delete_switch { get; set; } = true;
     private bool _isDeleteMode => delete_switch;
+    private bool _isEditMode;
+    private bool _readOnly;
+    private MudDataGrid<RegisteredTroopLeader> dataGrid;
 
     private IEnumerable<RegisteredTroopLeader> FilteredElements =>
     RegisteredService.Data ?? Enumerable.Empty<RegisteredTroopLeader>();
@@ -116,6 +131,10 @@
 
     void SelectedItemsChanged(HashSet<RegisteredTroopLeader> selected)
     {
+        if (_isEditMode)
+        {
+            return;
+        }
         _selectedItems = selected;
         _selectedIds = selected.Select(i => i.LeaderId).ToHashSet();
 
@@ -232,7 +251,7 @@
         if (isSingle && _selectedPerson != null)
         {
             title = "Confirm Deletion";
-            message =  $"Are you sure you want to register <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b> as a Scout?";
+            message =  $"Are you sure you want to delete the registration request of <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b> as a <b>{_selectedPerson.LeaderPosition}</b>?";
         }
         else if (!isSingle && _selectedItems.Any())
         {
@@ -284,6 +303,26 @@
         await ShowConfirmationDialog(isSingle: false, isDelete: delete_switch);
     }
 
+    private async Task OnCommitEdit(RegisteredTroopLeader item)
+    {
+        try
+        {
+            await RegisteredService.Update(item);
+            Snackbar.Add("Changes saved successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving changes: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnRowClicked(DataGridRowClickEventArgs<RegisteredTroopLeader> args)
+    {
+        if (_isEditMode)
+        {
+            await dataGrid.SetEditingItemAsync(args.Item);
+        }
+    }
 
     private bool _groupByPosition = true; // enable grouping on load
     private int _groupOrder = 0;              // group priority

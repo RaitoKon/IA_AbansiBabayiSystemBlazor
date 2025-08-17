@@ -5,6 +5,7 @@ using IA_AbansiBabayiSystemBlazor.Service;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.JSInterop;
@@ -30,13 +31,13 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
         private string currentMInitial = string.Empty;
         private string currentLname = string.Empty;
         private string currentStatus = string.Empty;
-        private DateTime? currentBirthDate = null;
+        private DateTime? currentBirthDate = DateTime.Today;
         private string currentBeneficiary = string.Empty;
         private string currentEmail = string.Empty;
         private string selectedLeaderName = string.Empty;
 
         private List<TroopLeaderInfo> troopLeaders = new();
-
+        private HubConnection? _hubConnection;
         [Inject]
         private IHubContext<AutoUpdateHub> HubContext { get; set; } = default!;
 
@@ -50,16 +51,40 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             currentRole = PassedDataRoute.ScoutLevel;
             currentStatus = PassedDataRoute.Status;
 
+            await LoadTroopLeaders();
+
+            // Setup SignalR
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+            {
+                if (tableName == "TroopLeaderRegistration")
+                {
+                    await LoadTroopLeaders();
+                    await InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await _hubConnection.StartAsync();
+        }
+
+        private async Task LoadTroopLeaders()
+        {
             troopLeaders = await AppDbContext.RegisteredTroopLeaders
-         .Where(leader => leader.LeaderPosition == "Leader" &&
-                          leader.LeaderRole == "Troop Leader")
-         .Select(leader => new TroopLeaderInfo
-         {
-             LeaderId = leader.LeaderId,
-             FullName = leader.LeaderFname + " " + leader.LeaderMInitial[0] + ". " + leader.LeaderLname
-         })
-         .OrderBy(x => x.LeaderId)
-         .ToListAsync();
+                .Where(leader => leader.LeaderPosition == "Leader" &&
+                                 leader.LeaderRole == "Troop Leader")
+                .Select(leader => new TroopLeaderInfo
+                {
+                    LeaderId = leader.LeaderId,
+                    FullName = leader.LeaderFname + " " +
+                               (string.IsNullOrEmpty(leader.LeaderMInitial) ? "" : leader.LeaderMInitial[0] + ". ") +
+                               leader.LeaderLname
+                })
+                .OrderBy(x => x.LeaderId)
+                .ToListAsync();
         }
 
         private bool toggleRegistrationDropdown = false;
