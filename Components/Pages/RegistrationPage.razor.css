@@ -142,7 +142,7 @@
     background: white;
     align-items: center;
     justify-content: center;
-    z-index: 6;
+    z-index: 5;
     cursor: pointer;
     filter: drop-shadow(0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.3))
 }
@@ -173,7 +173,7 @@
     display: none;
     align-items: center;
     position: absolute;
-    z-index: 5; /* Ensure it appears above other elements */
+    z-index: 4; /* Ensure it appears above other elements */
     width: 20rem; /* Adjust width as needed */
     top: -2rem;
     background: white;
@@ -293,10 +293,6 @@
         backdrop-filter: blur(3px);
         overflow: hidden;
     }
-
-.grid-row1 {
-    z-index: 3;
-}
 
 input::placeholder {
     color: darkgray;

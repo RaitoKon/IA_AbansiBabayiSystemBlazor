@@ -30,6 +30,8 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public virtual DbSet<TroopMemberAccount> RegisteredTroopMemberAccounts { get; set; }
 
+    public virtual DbSet<AddEvent> AddEvents { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
 
@@ -234,6 +236,36 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.AccountsId).HasColumnName("accountsID");
             entity.Property(e => e.Id).HasMaxLength(450);
             entity.Property(e => e.TroopMemId).HasColumnName("troopMemID");
+        });
+
+        modelBuilder.Entity<AddEvent>(entity =>
+        {
+            entity.HasKey(e => e.EventId);
+
+            entity.ToTable("ADD_EVENTS");
+
+            entity.Property(e => e.EventId).HasColumnName("eventID");
+            entity.Property(e => e.EventDate)
+                .HasColumnType("datetime")
+                .HasColumnName("eventDate");
+            entity.Property(e => e.EventDescription)
+                .HasMaxLength(500)
+                .IsUnicode(false)
+                .HasColumnName("eventDescription");
+            entity.Property(e => e.EventImagePath)
+                .HasMaxLength(250)
+                .IsUnicode(false)
+                .HasColumnName("eventImagePath");
+            entity.Property(e => e.EventTitle)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("eventTitle");
+            entity.Property(e => e.EventLocation)
+                .HasMaxLength(100)
+                .HasColumnName("eventLocation")
+                .IsUnicode(false)
+                .HasColumnName("eventLocation");
+
         });
 
         base.OnModelCreating(modelBuilder);

@@ -44,7 +44,11 @@ public class TableDataService<T> where T : class
     public async Task Delete(T item)
     {
         using var context = _contextFactory.CreateDbContext();
+
+        // Ensure EF knows which entity to delete
+        context.Set<T>().Attach(item);
         context.Set<T>().Remove(item);
+
         await context.SaveChangesAsync();
 
         // Reload the data after deleting to keep Data consistent

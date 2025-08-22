@@ -1,109 +1,202 @@
-﻿
-@page "/addEventPage"
+﻿@using System.ComponentModel.DataAnnotations
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Data
+@using Microsoft.AspNetCore.SignalR.Client
 
-@using System.ComponentModel.DataAnnotations
+@inject TableDataService<AddEvent> EventService
+@inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
+@page "/addEventPage"
 @layout Layout.ThemedLayout
 
 <div class="hero-content">
 
-        <MudPaper Elevation="4" Style="width: 100%; padding: 1rem; justify-self: center;">
-            <MudText Typo="Typo.h5" Class="mb-4">Add New Event</MudText>
+    <div>
+            <MudPaper Elevation="4" Style="padding: 3rem;">
+                <MudText Typo="Typo.h5" Class="mb-4">Add New Event</MudText>
+                <div style="display:flex; justify-content: space-between;">
+                    <MudForm @ref="form" OnValidSubmit="HandleValidSubmit" Style="width: 55%;">
+                        <MudTextField @bind-Value="eventModel.EventTitle" Variant="Variant.Outlined" Label="Event Title" Required="true" For="@(() => eventModel.EventTitle)" />
 
-            <MudForm @ref="form" OnValidSubmit="HandleValidSubmit">
-                <MudTextField @bind-Value="eventModel.Title" Label="Event Title" Required="true" For="@(() => eventModel.Title)" />
+                        <MudTextField @bind-Value="eventModel.EventDescription" Variant="Variant.Outlined" Label="Description" Lines="3" />
+                    <div style="display: flex;">
+                        <MudDatePicker @bind-Date="eventModel.EventDate" Label="Event Date" Required="true" />
+                        <MudSpacer/>
+                        <MudTextField @bind-Value="eventModel.EventLocation" Label="Location" Required="true" />
+                    </div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="HandleValidSubmit">
+                            Submit
+                        </MudButton>   
+                    </MudForm>
 
-                <MudTextField @bind-Value="eventModel.Description" Label="Description" Lines="3" />
+                        @if (!string.IsNullOrEmpty(previewImageUrl))
+                        {
+                            <MudPaper Style="padding: 1rem;">
+                        <MudImage Src="@previewImageUrl" Alt="Preview" ObjectFit="ObjectFit.Cover" Elevation="4" Width="300" Height="300" />
+                            </MudPaper>
+                        }
+                        else
+                        {
+                        <MudButton Style=" padding: 1rem; width: 40%; border: dashed 0.2rem #d6d6d6; border-radius: 1.5rem; justify-content: center; align-items:center">
+                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+                                <ActivatorContent>
+                                    <div style="display: flex; flex-direction: column; align-items: center;">
+                                        <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Style="font-size: 5rem" />
+                                        <MudText Style="font-size: 1.5rem;">Upload your event image here</MudText>
+                                    </div>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                        </MudButton>
+                        }
+                </div>
+            </MudPaper>
+    </div>
 
-                <MudDatePicker @bind-Date="eventModel.Date" Label="Event Date" Required="true" />
-
-                <MudTextField @bind-Value="eventModel.Location" Label="Location" />
-
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Type="Submit" Class="mt-4" OnClick="HandleValidSubmit">
-                    Submit
-                </MudButton>
-            </MudForm>
-        </MudPaper>
-
-    @if (events != null && events.Any())
-    {
-        <MudPaper Elevation="1" Style="width: 100%; padding: 1rem; justify-self: center;">
-            <MudText Typo="Typo.h6" Class="mb-3">Ongoing Events</MudText>
+       <MudPaper Elevation="1" Style="width: 100%; padding: 3rem; justify-self: center;">
+         <MudText Typo="Typo.h5" Class="mb-4">Ongoing Events</MudText>
             <MudDivider />
-                <MudGrid Style="margin: 0; width: 100%; justify-content: center !important;">
-                    @foreach (var e in events.OrderBy(e => e.Date ?? DateTime.MaxValue))
+            @if (EventService.Data != null && EventService.Data.Any())
+            {
+                <MudGrid Style="width: 100%; margin: 0;">
+                    @foreach (var e in EventService.Data.OrderBy(e => e.EventDate ?? DateTime.MaxValue))
                     {
-                        <MudCard Style="margin: 2rem; width: 40%;">
-                            <MudCardMedia Image="images/News2.jpg" Height="200" />
-                            <MudCardContent Style="display: flex; flex-direction: column;">
-                                <MudText Typo="Typo.h6">
-                                    <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-1" />
-                                    @e.Title
-                                </MudText>
+                        <MudCard Style="margin: 2rem; height: 10rem; width: 100%;">
+                            <div style="display:flex; height: 100%">
+                                <MudCardContent Style="display: flex; padding: 0.5rem;">
+                                <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; width: 10rem; align-items: center; justify-content: center; text-align: center;">
+                                                    @if (e.EventDate.HasValue)
+                                                        {
+                                                            <div>
+                                                            <p style="font-family: Lavish , sans-serif; font-size: 1rem; ">@e.EventDate.Value.ToString("MMMM")</p>
 
-                                <MudText Typo="Typo.body2">
-                                    <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-1" />
-                                    @e.Description
-                                </MudText>
+                                                            <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventDate.Value.ToString("dd").ToUpper()</p>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <p>No date set</p>
+                                                        }
+                                        </MudPaper>
+                                         <div style="display: flex; flex-direction:column; justify-content: space-between;">
+                                            <div>
+                                                <MudText Typo="Typo.h6" Style="margin-left: 1rem;">
+                                                    @e.EventTitle
+                                                </MudText>
 
-                                <MudText Typo="Typo.caption">
-                                    <MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-1" />
-                                    @(e.Date?.ToString("MMMM dd, yyyy") ?? "No date set")
-                                </MudText>
-
-                                <MudText Typo="Typo.caption">
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" Class="mr-1" />
-                                    @e.Location
-                                </MudText>
-                            </MudCardContent>
-                            <MudCardActions>
-                                <MudButton Variant="Variant.Text" Color="Color.Primary">Delete</MudButton>
-                                <MudButton Variant="Variant.Text" Color="Color.Primary">Edit</MudButton>
-                            </MudCardActions>
+                                                <MudText Typo="Typo.body2" Style="margin-left: 1rem;">
+                                                    @e.EventDescription
+                                                </MudText>
+                                                <MudDivider Style="margin-left: 0.5rem;"/>
+                                                <div style="display: flex; margin-left: 1rem; justify-items: center;">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Class="mr-1" />
+                                                    <MudText Typo="Typo.caption">
+                                                        @e.EventLocation
+                                                    </MudText>
+                                                </div>
+                                            </div>
+                                            <MudCardActions>
+                                                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => DeleteEvent(e)">Delete</MudButton>
+                                                </MudCardActions>
+                                        </div>
+                                        </MudCardContent>
+                                <MudCardMedia Image="@e.EventImagePath" Style="height: 100%; width: 40%;" />
+                            </div>
                         </MudCard>
                     }
                 </MudGrid>
+            }
         </MudPaper>
-    }
 
 </div>
 @code {
+    private HubConnection? _hubConnection;
     private MudForm form;
-    private EventModel eventModel = new();
-    private List<EventModel> events = new();
+    private AddEvent eventModel = new();
+    private string previewImageUrl;
+    IList<IBrowserFile> _files = new List<IBrowserFile>();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        events = new List<EventModel>();
+        await EventService.LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(AddEvent))
+            {
+                await EventService.LoadDataAsync();
+                StateHasChanged();
+            }
+        });
+
+        await _hubConnection.StartAsync();
     }
 
     private async Task HandleValidSubmit()
     {
-        events.Add(new EventModel
-            {
-                Title = eventModel.Title,
-                Description = eventModel.Description,
-                Date = eventModel.Date,
-                Location = eventModel.Location
-            });
+        var newEvent = new AddEvent
+        {
+            EventTitle = eventModel.EventTitle,
+            EventDescription = eventModel.EventDescription,
+            EventDate = eventModel.EventDate,
+            EventLocation = eventModel.EventLocation,
+            EventImagePath = eventModel.EventImagePath
+        };
+
+        // Save via TableDataService (DB + SignalR + refresh handled here)
+        await EventService.Add(newEvent);
 
         eventModel = new();
-        Snackbar.Add("Event added!", Severity.Success);
+        Snackbar.Add("Event added to the list!", Severity.Success);
         await form.ResetAsync();
-        StateHasChanged(); // Force UI update
+        StateHasChanged();
     }
 
-    public class EventModel
+    private async Task UploadFiles(IBrowserFile file)
     {
-        [Required(ErrorMessage = "Title is required")]
-        public string Title { get; set; }
+        // Use subfolder "eventImages"
+        var uploadsFolder = Path.Combine(Environment.CurrentDirectory, "wwwroot", "uploads", "eventImages");
+        Directory.CreateDirectory(uploadsFolder);
 
-        public string Description { get; set; }
+        var fileName = $"{Guid.NewGuid()}_{file.Name}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
 
-        [Required(ErrorMessage = "Date is required")]
-        public DateTime? Date { get; set; }
+        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB
+        using var fs = File.Create(filePath);
+        await stream.CopyToAsync(fs);
 
-        public string Location { get; set; }
+        // Save only the relative path
+        eventModel.EventImagePath = $"/uploads/eventImages/{fileName}";
+
+        // For preview in UI
+        previewImageUrl = eventModel.EventImagePath;
+        StateHasChanged();
+    }
+
+    private async Task DeleteEvent(AddEvent e)
+    {
+        try
+        {
+            // 1. Delete image file if it exists
+            if (!string.IsNullOrEmpty(e.EventImagePath) && File.Exists(e.EventImagePath))
+            {
+                File.Delete(e.EventImagePath);
+            }
+
+            // 2. Delete from database using service
+            await EventService.Delete(e);
+
+            // 3. Notify user
+            Snackbar.Add($"Event '{e.EventTitle}' deleted successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting event: {ex.Message}", Severity.Error);
+        }
     }
 }
