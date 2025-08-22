@@ -1,0 +1,181 @@
+﻿
+.badge-page {
+    padding: 2rem;
+    background: linear-gradient(135deg, #ffe3d1, #ff8546, #ff6a2c);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    animation: fadeIn 1.2s ease;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+
+.badge-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    animation: slideDown 0.8s ease;
+}
+
+    .badge-header img.badge-logo {
+        width: 100px;
+        height: auto;
+        border-radius: 50%;
+        border: 3px solid #ffb396;
+        box-shadow: 0 6px 12px rgba(255, 106, 44, 0.25);
+        transition: transform 0.3s ease;
+    }
+
+        .badge-header img.badge-logo:hover {
+            transform: rotate(10deg) scale(1.05);
+        }
+
+    .badge-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #d14500;
+    }
+
+.level-description {
+    color: #6b2b00;
+    font-size: 1.1rem;
+    margin-top: 0.25rem;
+}
+
+
+.promise-law {
+    background: #fff;
+    border-left: 5px solid #d14500;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+    animation: popUp 1s ease;
+}
+
+    .promise-law h2 {
+        color: #d14500;
+        margin-top: 0;
+    }
+
+    .promise-law p {
+        color: #6b2b00;
+        font-size: large;
+    }
+
+    .promise-law li {
+        margin-bottom: 0.5rem;
+    }
+
+
+.badges-grid {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+    .badges-grid h2 {
+        font-size: 1.6rem;
+        color: #d14500;
+        margin-bottom: 1.5rem;
+    }
+
+    .badges-grid h3 {
+        font-size: 1.3rem;
+        color: #d14500;
+        margin-bottom: 1.5rem;
+        text-align: left
+    }
+
+    .badges-grid .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+    }
+
+.badge-item {
+    background: #fff;
+    border: 2px solid #ffb396;
+    border-radius: 1rem;
+    padding: 1rem;
+    text-align: match-parent;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.8s ease;
+}
+
+    .badge-item:hover {
+        transform: translateY(-8px) scale(1.03);
+        box-shadow: 0 10px 20px rgba(255, 106, 44, 0.25);
+    }
+
+    .badge-item img {
+        width: 100px;
+        height: 120px;
+        margin-bottom: 0.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .badge-item:hover img {
+        transform: scale(1.1);
+    }
+
+    .badge-item h3 {
+        font-size: 1.1rem;
+        color: #d14500;
+        margin: 0.5rem 0;
+        text-align: center;
+    }
+
+    .badge-item p {
+        font-size: 0.95rem;
+        color: #5e3355;
+        margin: 0;
+    }
+
+/*  Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes popUp {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
