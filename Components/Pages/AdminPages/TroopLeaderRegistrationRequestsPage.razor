@@ -246,7 +246,7 @@
 
         await TroopLeaderAccountService.Add(accountLink);
 
-        await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.LeaderEmail, person.LeaderFname, tempPassword);
+        // await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.LeaderEmail, person.LeaderFname, tempPassword);
 
         // Step 4: Remove from pending registration
         await TroopService.Delete(person);
