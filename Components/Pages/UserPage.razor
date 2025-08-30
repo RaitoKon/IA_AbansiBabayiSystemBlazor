@@ -2,13 +2,16 @@
 @using IA_AbansiBabayiSystemBlazor.Data.Models;
 @using IA_AbansiBabayiSystemBlazor.Data;
 @using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Authorization;
 @using Microsoft.EntityFrameworkCore
 
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject TableDataService<TroopMemberAccount> TroopMemberAccountService
+@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
 @inject UserManager<ApplicationUser> UserManager
-@inject ApplicationDbContext UserInfoFromDB
+@inject ApplicationDbContext GetTroopMemberData
 @inject SignInManager<ApplicationUser> SignInManager
 @inject HttpClient Http
 
@@ -26,14 +29,19 @@
                 <div class="nav-left">
                     <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
                     <div class="nav-links">
-                        <a href="#" class="nav-link">HOME</a>
+                        <a href="/userPage" class="nav-link">HOME</a>
                         <a href="#" class="nav-link">BADGES</a>
                         <a href="#" class="nav-link">TROOP<br>LOCATOR</a>
                     </div>
                 </div>
-                <p>@troopLeaderFname</p>
-                <div class="nav-right">  
+                <p>@currentUserFname</p>
+                <div class="nav-right">
+                    <AuthorizeView Roles="Admin, Troop Leader">
                     <a href="/managementPage" class="nav-link">MANAGEMENT</a>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Scout">
+                        <a href="/scoutEventsAndAnnouncementPage" class="nav-link">EVENTS AND <br /> ANNOUNCEMENTS</a>
+                    </AuthorizeView>
                     <MudMenu>
                         <ActivatorContent>
                             <MudAvatar Class="double-border">
@@ -164,21 +172,30 @@
 
 
 
-@code {
+    @code {
 
     private ApplicationUser currentUser;
-    private string troopLeaderFname;
+    private string currentUserFname;
+    private string currentLeaderRole;
+    private string currentTroopMemRole;
     private string errorMessage;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+
         isLoading = true;
 
         try
         {
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
+
+            if (!user.IsInRole("Admin") && !user.IsInRole("Troop Leader") && !user.IsInRole("Scout"))
+            {
+                NavigationManager.NavigateTo("/landingPage", forceLoad: true);
+            }
+
 
             if (user.Identity?.IsAuthenticated ?? false)
             {
@@ -187,16 +204,30 @@
 
                 if (currentUser != null)
                 {
+                    await TroopLeaderAccountService.LoadDataAsync();
+                    await TroopMemberAccountService.LoadDataAsync();
                     // Fetch troop leader name from related data
-                    var account = await UserInfoFromDB.RegisteredTroopLeaderAccounts
-                        .FirstOrDefaultAsync(a => a.Id == userId);
+                    var troopLeaderAccount = TroopLeaderAccountService.Data
+                        .FirstOrDefault(a => a.Id == userId);
+                    var troopMemberAccount = TroopMemberAccountService.Data
+                        .FirstOrDefault(a => a.Id == userId);
 
-                    if (account != null)
+
+                    if (troopLeaderAccount != null)
                     {
-                        var troopInfo = await UserInfoFromDB.RegisteredTroopLeaders
-                            .FirstOrDefaultAsync(l => l.LeaderId == account.LeaderId);
+                        var troopInfo = GetTroopMemberData.RegisteredTroopLeaders
+                            .FirstOrDefault(l => l.LeaderId == troopLeaderAccount.LeaderId);
 
-                        troopLeaderFname = troopInfo?.LeaderFname;
+                        currentUserFname = troopInfo?.LeaderFname;
+                        currentLeaderRole = troopInfo.LeaderRole;
+                    }
+                    else if (troopMemberAccount != null)
+                    {
+                        var troopInfo = await GetTroopMemberData.RegisteredTroopMembers
+                            .FirstOrDefaultAsync(l => l.TroopMemId == troopMemberAccount.TroopMemId);
+
+                        currentUserFname = troopInfo?.TroopMemFname;
+                        currentTroopMemRole = troopInfo.TroopMemRole;
                     }
                 }
             }

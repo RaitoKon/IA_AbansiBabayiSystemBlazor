@@ -15,8 +15,6 @@
 @inject ILogger<ThemedLayout> Logger
 @inject UserManager<ApplicationUser> UserManager
 
-@* @attribute [Authorize] *@
-
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
    <MudSnackbarProvider MaxDisplayedSnackbars="3" Position="SnackbarPosition.TopCenter" />
     <MudPopoverProvider />
@@ -44,14 +42,15 @@
                         <MudNavGroup Title="Dashboard" Icon="@Icons.Material.Filled.Dashboard">
                             <MudNavGroup Title="Manage Troop Leader" Icon="@Icons.Material.Filled.PersonAdd">
                                 <MudNavLink Href="/troopLeaderRegistrationRequestsPage" Icon="@Icons.Material.Filled.GroupAdd">Registration Requests</MudNavLink>
-                                <MudNavLink Href="/troopLeaderDashboardPage" Icon="@Icons.Material.Filled.Groups">Troop Dashboard</MudNavLink>
+                                <MudNavLink Href="/troopLeaderDashboardPage" Icon="@Icons.Material.Filled.Groups">Troop Leader Dashboard</MudNavLink>
                             </MudNavGroup>
                             <MudNavGroup Title="Manage Events" Icon="@Icons.Material.Filled.AppRegistration">
                                 <MudNavLink Href="/addEventPage" Icon="@Icons.Material.Filled.EditCalendar">Add Event</MudNavLink>
                                 <MudNavLink Href="/eventRegistrationRequestsPage" Icon="@Icons.Material.Filled.FreeCancellation">Event Registration Requests</MudNavLink>
                             </MudNavGroup>
-                            <MudNavGroup Title="Troop Information" Icon="@Icons.Material.Filled.AccountBox">
-                                Dashboard
+                            <MudNavGroup Title="Manage Troop" Icon="@Icons.Material.Filled.AccountBox">
+                                <MudNavLink Href="#" Icon="@Icons.Material.Filled.GroupAdd">Troop Registration Requests</MudNavLink>
+                                <MudNavLink Href="#" Icon="@Icons.Material.Filled.Groups">Troop Dashboard</MudNavLink>
                             </MudNavGroup>
                         </MudNavGroup>
                     </MudNavMenu>
@@ -74,9 +73,7 @@
                             <MudNavGroup Title="Event Registration" Icon="@Icons.Material.Filled.AppRegistration">
                                 Dashboard
                             </MudNavGroup>
-                            <MudNavGroup Title="Troop Information" Icon="@Icons.Material.Filled.AccountBox">
-                                Dashboard
-                            </MudNavGroup>
+                            <MudNavLink Href="/troopInformationFormPage" Icon="@Icons.Material.Filled.AccountBox">Troop Information Form</MudNavLink> 
                         </MudNavGroup>
                     </MudNavMenu>
                 </MudPaper>
@@ -107,6 +104,18 @@
     </MudLayout>
 
 @code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Uncomment for Authorization
+        // var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        // var user = authState.User;
+
+        // // Redirect to NotFound if role doesn't match (extra safety)
+        // if (!user.IsInRole("Admin") && !user.IsInRole("Troop Leader"))
+        // {
+        //     NavigationManager.NavigateTo("/notFoundPage", forceLoad: true);
+        // }
+    }
 
     private async Task LogoutAsync()
     {

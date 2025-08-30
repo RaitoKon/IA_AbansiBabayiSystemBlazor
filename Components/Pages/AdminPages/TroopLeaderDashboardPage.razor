@@ -67,7 +67,7 @@
             <TemplateColumn Title="Full Name" Sortable="true">
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial[0]}.")} {context.Item.LeaderLname}")
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMinitial) ? "" : $" {context.Item.LeaderMinitial[0]}.")} {context.Item.LeaderLname}")
                     </span>
                 </CellTemplate>
             </TemplateColumn>
@@ -87,6 +87,7 @@
             <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
             <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
             <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Editable="true" />
+
         </Columns>
         <PagerContent>
             <MudDataGridPager T="RegisteredTroopLeader" Style="color: #25a129ff;" />
@@ -123,6 +124,7 @@
 
     private HashSet<RegisteredTroopLeader> _selectedItems = new();
     private HashSet<int> _selectedIds = new();
+
     private HashSet<RegisteredTroopLeader> GetSelectedItems()
     {
         if (RegisteredService.Data == null) return new();
@@ -198,48 +200,51 @@
         }
     }
 
+  
     private async Task DeletePerson(RegisteredTroopLeader person)
-    {
-        if (person == null) return;
-
-        try
         {
+            if (person == null) return;
 
-            var account = await GetTroopLeaderData.RegisteredTroopLeaderAccounts
-            .FirstOrDefaultAsync(a => a.LeaderId == person.LeaderId);
-
-            if (account != null)
+            try
             {
-                var userRoles = await GetTroopLeaderData.UserRoles
-                    .Where(ur => ur.UserId == account.Id)
-                    .ToListAsync();
+                var account = await GetTroopLeaderData.RegisteredTroopLeaders
+                    .FirstOrDefaultAsync(a => a.LeaderId == person.LeaderId);
 
-                GetTroopLeaderData.UserRoles.RemoveRange(userRoles);
+                if (account != null)
+                {
+                    // Find the Identity user by email
+                    var identityUser = await UserManager.FindByEmailAsync(account.LeaderEmail);
 
-                var identityUser = await GetTroopLeaderData.Users
-                    .FirstOrDefaultAsync(u => u.Id == account.Id);
+                    if (identityUser != null)
+                    {
+                        // Remove roles
+                        var roles = await UserManager.GetRolesAsync(identityUser);
+                        if (roles.Any())
+                        {
+                            await UserManager.RemoveFromRolesAsync(identityUser, roles);
+                        }
 
-                if (identityUser != null)
-                    GetTroopLeaderData.Users.Remove(identityUser);
+                        // Delete identity user
+                        await UserManager.DeleteAsync(identityUser);
+                    }
 
-                GetTroopLeaderData.RegisteredTroopLeaderAccounts.Remove(account);
+                    // Remove the troop leader record
+                    GetTroopLeaderData.RegisteredTroopLeaders.Remove(account);
+                }
+
+                await GetTroopLeaderData.SaveChangesAsync();
+
+                await RegisteredService.NotifyChangedAsync();
+
+                Snackbar.Add(
+                    $"{person.LeaderFname} {person.LeaderMinitial} {person.LeaderLname} has been removed successfully!",
+                    Severity.Success
+                );
             }
-
-            GetTroopLeaderData.RegisteredTroopLeaders.Remove(person);
-
-            await GetTroopLeaderData.SaveChangesAsync(); // commit all at once
-
-            await RegisteredService.NotifyChangedAsync();
-
-            Snackbar.Add(
-                $"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been removed successfully!",
-                Severity.Success
-            );
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error deleting {person.LeaderFname} {person.LeaderLname}: {ex.Message}", Severity.Error);
-        }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting {person.LeaderFname} {person.LeaderLname}: {ex.Message}", Severity.Error);
+            }
     }
 
     private async Task ShowConfirmationDialog(bool isSingle, bool isDelete)

@@ -1,0 +1,115 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject TableDataService<TroopCluster> TroopClusterService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog Style="width: 30rem; height: 30rem;">
+    <TitleContent>
+        <h3> Add Cluster</h3>
+    </TitleContent>
+    <DialogContent>
+        <div style="display:flex; align-items: center;">
+            <MudTextField @bind-Value="_enteredClusterName"
+                          Label="Cluster Name"
+                          Variant="Variant.Text"
+                          Error="_hasError"
+                          ErrorText="Field is empty"
+                          Style="width: 95%;" />
+            <MudButton OnClick="AddClusterNameAsync" Variant="Variant.Filled" Size="Size.Small" Color="Color.Primary" Style="height: 2rem; width: 4rem;">Add</MudButton>
+        </div>
+        <br />
+        <MudTable Items="TroopClusterService.Data"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  LoadingProgressColor="Color.Info"
+                  Bordered="true"
+                  Elevation="1"
+                  Dense="true">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Cluster Name</MudTh>
+                <MudTh Style="width: 1rem;">Remove Cluster</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.ClusterId</MudTd>
+                <MudTd DataLabel="Cluster Name">@context.ClusterName</MudTd>
+                <MudTd Style="width: 1rem;">
+                    <MudButton OnClick="@(() => DeleteClusterAsync(context))"
+                            Variant="Variant.Filled" 
+                            Size="Size.Small" 
+                            Color="Color.Error">
+                        Delete
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+    private string _enteredClusterName;
+    private bool _hasError;
+    private string _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TroopClusterService.LoadDataAsync();
+        TroopClusterService.OnChanged += StateHasChanged;
+    }
+
+    private async Task AddClusterNameAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_enteredClusterName))
+        {
+            _hasError = true;
+        }
+        else
+        {
+            _hasError = false;
+            _errorMessage = string.Empty;
+
+            var newCluster = new TroopCluster
+            {
+                ClusterName = _enteredClusterName
+            };
+
+            await TroopClusterService.Add(newCluster); // service call
+            Snackbar.Add($"Cluster '{_enteredClusterName}' added successfully!", Severity.Success);
+
+            _enteredClusterName = string.Empty; // clear text field
+        }
+    }
+
+    private async Task DeleteClusterAsync(TroopCluster cluster)
+    {
+        if (cluster == null) return;
+
+        bool? confirm = await DialogService.ShowMessageBox(
+            title: "Confirm Delete",
+            markupMessage: (MarkupString)$"Are you sure you want to delete cluster <b>{cluster.ClusterName}</b>?",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        // only delete if user explicitly clicked "Delete"
+        if (confirm == true)
+        {
+            await TroopClusterService.Delete(cluster); // service call
+            Snackbar.Add($"Cluster '{cluster.ClusterName}' deleted.", Severity.Success);
+        }
+    }
+
+    public void Dispose()
+    {
+        TroopClusterService.OnChanged -= StateHasChanged;
+    }
+}

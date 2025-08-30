@@ -67,3 +67,32 @@ h1:focus {
         transform: scale(1.05); /* Slight zoom on hover */
         box-shadow: 0 0 0 3px #49a354, 0 0 8px rgba(0, 0, 0, 0.2); /* Brighter border glow */
     }
+
+.mud-tabs-tabbar {
+    align-items: center;
+    background: linear-gradient(42deg,rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 100%);
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    border: solid 1px #ffff;
+    border-radius: 1rem;
+    padding-inline: 2rem;
+}
+
+.event-card {
+    margin: 2rem;
+    height: 15rem;
+    width: 100%;
+    border-radius: 1rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: pointer;
+}
+
+    .event-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+.cluster-padding{
+    padding:0;
+}

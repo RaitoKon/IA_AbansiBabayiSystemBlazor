@@ -8,28 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\app.css" />
-    <None Include="wwwroot\favicon.png" />
     <None Include="wwwroot\icons\.DS_Store" />
-    <None Include="wwwroot\icons\Cart.svg" />
-    <None Include="wwwroot\icons\check_circle.png" />
-    <None Include="wwwroot\icons\dropdown.svg" />
-    <None Include="wwwroot\icons\Menu.svg" />
     <None Include="wwwroot\images\.DS_Store" />
-    <None Include="wwwroot\images\BG-Base.png" />
-    <None Include="wwwroot\images\BG-Base1.png" />
-    <None Include="wwwroot\images\BG-FINAL.png" />
-    <None Include="wwwroot\images\BG-Vector-Cadet.png" />
-    <None Include="wwwroot\images\BG-Vector-Junior.png" />
-    <None Include="wwwroot\images\BG-Vector-Senior.png" />
-    <None Include="wwwroot\images\BG-Vector-Star.png" />
-    <None Include="wwwroot\images\BG-Vector-Twinklers.png" />
-    <None Include="wwwroot\images\BG-Vector.png" />
-    <None Include="wwwroot\images\chief-girl-scout-medal-scheme8.jpg" />
-    <None Include="wwwroot\images\default-scout-avatar.jpg" />
-    <None Include="wwwroot\images\GIRL SCOUT LOGO.png" />
-    <None Include="wwwroot\images\News1.jpg" />
-    <None Include="wwwroot\images\News2.jpg" />
   </ItemGroup>
 
   <ItemGroup>

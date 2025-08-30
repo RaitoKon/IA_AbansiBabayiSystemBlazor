@@ -344,8 +344,11 @@
                             <div style=" display: flex; justify-content: space-between;">
 
                                 <MudButton Variant="Variant.Text" Size="Size.Large" Color="Color.Primary" OnClick="CancelRegistration">Cancel</MudButton>
+                                <div style="display:flex">
+                                <p class="error-message" style="margin-inline:1rem;">@errorMessage</p>
+                                <p>@successMessage</p>
                                 <MudButton Variant="Variant.Filled" Size="Size.Large" Style="width: 11rem;" Color="Color.Primary" OnClick="SubmitRegistration" Disabled="isSubmitting">
-
+                                
                                     @if (isSubmitting)
                                     {
                                         <MudProgressCircular Indeterminate="true"
@@ -359,10 +362,8 @@
                                                                         
                                     }
                                 </MudButton>
-    
+                                </div>
                             </div>
-                            <p class="error-message">@errorMessage</p>
-                            <p>@successMessage</p>
                         </div>
                     </form>
                 </div>

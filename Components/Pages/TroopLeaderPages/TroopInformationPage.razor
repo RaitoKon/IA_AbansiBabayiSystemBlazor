@@ -1,0 +1,194 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Data
+
+@inject TableDataService<RegisteredTroopLeader> RegisteredTroopLeaderService
+@inject TableDataService<RegisteredTroopMember> RegisteredTroopMemberService
+@inject TableDataService<TroopCluster> TroopClusterService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@page "/troopInformationFormPage"
+@layout Layout.ThemedLayout
+
+<div class="hero-content">
+    <MudPaper Class="pa-6 rounded-lg shadow-md">
+
+        <MudText Typo="Typo.h5" Class="mb-4">Troop Information Form</MudText>
+
+        <MudDivider />
+
+        <MudItem xs="6" Class="mt-5 mb-5">
+            <MudText Typo="Typo.h5" Style="font-weight:700;">Region 6</MudText>
+            <MudText Typo="Typo.h5" Style="font-weight:400;"> Iloilo Girl Scout Council</MudText>
+        </MudItem>
+
+        <MudText Typo="Typo.h6" Class="mb-2">Troop</MudText>
+        <MudGrid>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Troop Name" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Age Level" FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Troop Address" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Sponsoring Group" FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Troop Tel. No." FullWidth="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="District Committee Name / Municipality" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Complete Mailing Address" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Barangay Committee Name" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Label="Troop Birthday" FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Troop Type" FullWidth="true">
+                    <MudSelectItem Value="@("School Based")">School Based</MudSelectItem>
+                    <MudSelectItem Value="@("Community Based")">Community Based</MudSelectItem>
+                </MudSelect>
+
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Troop Status" FullWidth="true">
+                    <MudSelectItem Value="@("Re-Registered")">Re-Registered</MudSelectItem>
+                    <MudSelectItem Value="@("New")">New</MudSelectItem>
+                </MudSelect>
+
+            </MudItem>
+
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <!-- Leaders -->
+        <MudText Typo="Typo.h6" Class="mb-2">Troop Leaders</MudText>
+        <MudTable T="RegisteredTroopLeader" Items="@TroopLeaderData" Bordered="true">
+            <HeaderContent>
+                <MudTh>Position</MudTh>
+                <MudTh>Teaching or Non-Teaching</MudTh>
+                <MudTh>Registration Status</MudTh>
+                <MudTh>Full Name (Last, First, M.I.)</MudTh>
+                <MudTh>Birthdate</MudTh>
+                <MudTh>Beneficiary</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.LeaderPosition</MudTd>
+                <MudTd>@context.LeaderTorNT</MudTd>
+                <MudTd>@context.LeaderRegStatus</MudTd>
+                <MudTd>
+                    @($"{context.LeaderLname?.Trim()}, {context.LeaderFname}{(string.IsNullOrWhiteSpace(context.LeaderMinitial) ? "" : $" {context.LeaderMinitial[0]}.")}")
+                </MudTd>
+                <MudTd>@context.LeaderBirthdate?.ToString("MMMM dd, yyyy")</MudTd>
+                <MudTd>@context.LeaderBeneficiary</MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudDivider Class="my-4" />
+
+        <!-- Troop Members -->
+        <MudText Typo="Typo.h6" Class="mb-2">Scouts</MudText>
+        <MudTable T="RegisteredTroopMember" Items="TroopMemberData" GroupHeaderStyle="background-color:#e6e6e6;" GroupBy="@_groupDefinition" Bordered="true">
+            <HeaderContent>
+                <MudTh>Full Name (Last, First, M.I.)</MudTh>
+                <MudTh>Birthdate</MudTh>
+                <MudTh>Grade Or Year</MudTh>
+                <MudTh>Registration Status</MudTh>
+                <MudTh>Beneficiary</MudTh>
+            </HeaderContent>
+            <GroupHeaderTemplate>
+                <MudTd colspan="6">
+                    @context.GroupName: <b>@context.Key</b>
+                </MudTd>
+            </GroupHeaderTemplate>
+            <RowTemplate>
+                <MudTd>
+                    @($"{context.TroopMemLname?.Trim()}, {context.TroopMemFname}{(string.IsNullOrWhiteSpace(context.TroopMemMinitial) ? "" : $" {context.TroopMemMinitial[0]}.")}")
+                </MudTd>
+                <MudTd>@context.TroopMemBirthdate?.ToString("MMMM dd, yyyy")</MudTd>
+                <MudTd>@context.TroopMemGradeOrYear</MudTd>
+                <MudTd>@context.TroopMemRegStatus</MudTd>
+                <MudTd>@context.TroopMemBeneficiary</MudTd>
+            </RowTemplate>
+        </MudTable>    
+
+        <MudDivider Class="my-4" />
+        <div style="display:flex; justify-content:end">
+        <MudButton EndIcon="@Icons.Material.Filled.ArrowRightAlt" Variant="Variant.Filled" Color="Color.Primary">Submit Troop Information</MudButton>
+        </div>
+    </MudPaper>
+</div>
+
+
+@code {
+    private IEnumerable<RegisteredTroopLeader> TroopLeaderData = new List<RegisteredTroopLeader>();
+    private IEnumerable<RegisteredTroopMember> TroopMemberData = new List<RegisteredTroopMember>();
+
+    private TableGroupDefinition<RegisteredTroopMember> _groupDefinition;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load data from the service
+        await RegisteredTroopLeaderService.LoadDataAsync();
+        await RegisteredTroopMemberService.LoadDataAsync();
+        await TroopClusterService.LoadDataAsync();
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out var leaderId))
+            {
+                // Find current leader by int ID
+                var currentLeader = RegisteredTroopLeaderService.Data
+                    .FirstOrDefault(l => l.LeaderId == leaderId);
+
+                if (currentLeader != null)
+                {
+                    // Show current leader + co-leaders with the same TroopNumber
+                    TroopLeaderData = RegisteredTroopLeaderService.Data
+                        .Where(l => l.LeaderId == currentLeader.LeaderId   // the leader himself
+                                 || l.ColeaderTroopNo == currentLeader.LeaderId) // co-leaders under this leader
+                        .ToList();
+                }
+            }
+        }
+
+        // Bind to the local table variable
+        TroopLeaderData = RegisteredTroopLeaderService.Data;
+        TroopMemberData = RegisteredTroopMemberService.Data;
+
+        // Subscribe so the table updates when data changes (SignalR triggers)
+        RegisteredTroopLeaderService.OnChanged += StateHasChanged;
+        RegisteredTroopMemberService.OnChanged += StateHasChanged;
+
+        _groupDefinition = new TableGroupDefinition<RegisteredTroopMember>
+        {
+            GroupName = "Cluster",
+            Expandable = true,
+            Selector = (member) =>
+            {
+                var clusterName = TroopClusterService.Data
+                    ?.FirstOrDefault(c => c.ClusterId == member.ClusterId)
+                    ?.ClusterName;
+
+                return clusterName ?? "Unassigned";
+            }
+        };
+    }
+
+}

@@ -80,7 +80,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
                 {
                     LeaderId = leader.LeaderId,
                     FullName = leader.LeaderFname + " " +
-                               (string.IsNullOrEmpty(leader.LeaderMInitial) ? "" : leader.LeaderMInitial[0] + ". ") +
+                               (string.IsNullOrEmpty(leader.LeaderMinitial) ? "" : leader.LeaderMinitial[0] + ". ") +
                                leader.LeaderLname
                 })
                 .OrderBy(x => x.LeaderId)
@@ -210,9 +210,9 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
                     {
 
                         var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var registerdLeader = AppDbContext.TroopLeaderRegistrations.FirstOrDefault(l => l.LeaderEmail == currentEmail);
                         var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                        var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+                        var registerdMember = AppDbContext.TroopMemberRegistrations.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
 
                         if (existingLeader != null || registerdLeader != null || existingMember != null || registerdMember != null)
                         {
@@ -223,19 +223,19 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
                         var newLeader = new TroopLeaderRegistration
                         {
                             LeaderFname = currentFname,
-                            LeaderMInitial = currentMInitial,
+                            LeaderMinitial = currentMInitial,
                             LeaderLname = currentLname,
                             LeaderPosition = currentPosition,
-                            CoLeaderTroopNumber = validatedtroopNumber,
+                            ColeaderTroopNo = validatedtroopNumber,
                             LeaderRole = currentRole,
                             LeaderTorNT = currentTorNT,
                             LeaderRegStatus = currentStatus,
                             LeaderEmail = currentEmail,
                             LeaderBeneficiary = currentBeneficiary,
-                            LeaderBirthdate = currentBirthDate
+                            LeaderBirthdate = currentBirthDate.Value
                         };
 
-                        AppDbContext.TroopLeaders.Add(newLeader);
+                        AppDbContext.TroopLeaderRegistrations.Add(newLeader);
                         await AppDbContext.SaveChangesAsync();
                         await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopLeaderRegistration");
 
@@ -289,9 +289,9 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
                     {
 
                         var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var registerdLeader = AppDbContext.TroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
+                        var registerdLeader = AppDbContext.TroopLeaderRegistrations.FirstOrDefault(l => l.LeaderEmail == currentEmail);
                         var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                        var registerdMember = AppDbContext.TroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
+                        var registerdMember = AppDbContext.TroopMemberRegistrations.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
 
                         if (existingMember != null || registerdMember != null)
                         {
@@ -309,11 +309,11 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
                             TroopMemRegStatus = currentStatus,
                             TroopMemEmail = currentEmail,
                             TroopMemBeneficiary = currentBeneficiary,
-                            TroopMemBirthdate = currentBirthDate,
+                            TroopMemBirthdate = currentBirthDate.Value,
                             TroopMemGradeOrYear = currentGradeOrYear
                         };
 
-                        AppDbContext.TroopMembers.Add(newMember);
+                        AppDbContext.TroopMemberRegistrations.Add(newMember);
                         await AppDbContext.SaveChangesAsync();
                         await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopMemberRegistration");
 

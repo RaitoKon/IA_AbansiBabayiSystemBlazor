@@ -39,18 +39,20 @@
     [Parameter]
     public bool isSubmitting { get; set; }
 
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+
     private async Task ConfirmActionAsync()
     {
         isSubmitting = true;
-
         try
         {
-            MudDialog.Close(DialogResult.Ok(true));
-            StateHasChanged();
+            await OnConfirmed.InvokeAsync();  // ✅ run parent’s operation
+            MudDialog.Close(DialogResult.Ok(true)); // ✅ close after done
         }
         finally
         {
             isSubmitting = false;
+            StateHasChanged();
         }
     }
 }

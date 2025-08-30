@@ -10,4 +10,6 @@ public partial class TroopMemberAccount
     public int TroopMemId { get; set; }
 
     public string Id { get; set; } = null!;
+
+    public virtual RegisteredTroopMember TroopMem { get; set; } = null!;
 }

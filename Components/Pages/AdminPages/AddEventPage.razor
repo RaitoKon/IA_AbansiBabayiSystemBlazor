@@ -96,7 +96,7 @@
                                                 </div>
                                             </div>
                                             <MudCardActions>
-                                                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => DeleteEvent(e)">Delete</MudButton>
+                                                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="() => DeleteEvent(e)">Delete</MudButton>
                                                 </MudCardActions>
                                         </div>
                                         </MudCardContent>
@@ -139,6 +139,31 @@
 
     private async Task HandleValidSubmit()
     {
+        var errors = new List<string>();
+
+        // Custom validation rules
+        if (string.IsNullOrWhiteSpace(eventModel.EventTitle))
+            errors.Add("Title is required.");
+
+        if (string.IsNullOrWhiteSpace(eventModel.EventDescription))
+            errors.Add("Description is required.");
+
+        if (eventModel.EventDate == default)
+            errors.Add("Please select a valid date.");
+        else if (eventModel.EventDate < DateTime.Today)
+            errors.Add("Event date cannot be in the past.");
+
+        if (string.IsNullOrWhiteSpace(eventModel.EventLocation))
+            errors.Add("Location is required.");
+
+        // If validation fails, show errors
+        if (errors.Any())
+        {
+            foreach (var error in errors)
+                Snackbar.Add(error, Severity.Error);
+            return;
+        }
+
         var newEvent = new AddEvent
         {
             EventTitle = eventModel.EventTitle,
@@ -152,6 +177,8 @@
         await EventService.Add(newEvent);
 
         eventModel = new();
+        previewImageUrl = null;
+
         Snackbar.Add("Event added to the list!", Severity.Success);
         await form.ResetAsync();
         StateHasChanged();

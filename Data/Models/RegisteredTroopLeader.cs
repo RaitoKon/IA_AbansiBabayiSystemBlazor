@@ -19,11 +19,17 @@ public partial class RegisteredTroopLeader
 
     public string? LeaderFname { get; set; }
 
-    public string? LeaderMInitial { get; set; }
+    public string? LeaderMinitial { get; set; }
 
     public DateTime? LeaderBirthdate { get; set; }
 
     public string? LeaderBeneficiary { get; set; }
 
     public string? LeaderEmail { get; set; }
+
+    public int? ColeaderTroopNo { get; set; }
+
+    public virtual ICollection<TroopInformation> TroopInformations { get; set; } = new List<TroopInformation>();
+
+    public virtual ICollection<TroopLeaderAccount> TroopLeaderAccounts { get; set; } = new List<TroopLeaderAccount>();
 }

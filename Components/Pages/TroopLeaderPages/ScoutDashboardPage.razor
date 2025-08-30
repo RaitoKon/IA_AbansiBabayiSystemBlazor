@@ -3,18 +3,19 @@
 @using IA_AbansiBabayiSystemBlazor.Data.Models
 @using Microsoft.EntityFrameworkCore
 @using IA_AbansiBabayiSystemBlazor.Service
-@using IA_AbansiBabayiSystemBlazor.Hubs
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.SignalR.Client
 
-@inject ApplicationDbContext GetDataFromDB
+@inject ApplicationDbContext GetTroopLeaderData
 @inject NavigationManager NavigationManager
-@inject TableDataService<RegisteredTroopMember> TroopService
+@inject TableDataService<RegisteredTroopMember> RegisteredService
+@inject TableDataService<TroopMemberAccount> TroopMemberAccountService
+@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
+@inject TableDataService<TroopCluster> TroopClusterService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject UserManager<ApplicationUser> UserManager
-@inject EmailService EmailService
-@inject RoleManager<IdentityRole> RoleManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 @page "/scoutDashboardPage"
@@ -23,8 +24,27 @@
 <MudDialogProvider />
 <div class="hero-content">
 
-    <MudDataGrid T="RegisteredTroopMember" MultiSelection="true" RowsPerPage="8" ColumnResizeMode="ResizeMode.Container" Striped="true" Items="@FilteredElements" SortMode="SortMode.Multiple"
-                 Filterable="true" QuickFilter="@_quickFilter" Hideable="true" SelectedItems="@GetSelectedItems()" SelectedItemsChanged="SelectedItemsChanged">
+    <MudDataGrid T="RegisteredTroopMember"
+                 @ref="dataGrid"
+                 MultiSelection="@(!_isEditMode)"
+                 RowsPerPage="8"
+                 ColumnResizeMode="ResizeMode.Column"
+                 Groupable="true"
+                 Striped="true"
+                 Items="@FilteredElements"
+                 SortMode="SortMode.Multiple"
+                 QuickFilter="@_quickFilter"
+                 Hideable="true"
+                 SelectedItems="_selectedItems"
+                 SelectedItemsChanged="SelectedItemsChanged"
+                 ReadOnly="@_readOnly"
+                 EditMode="DataGridEditMode.Form"
+                 EditTrigger="DataGridEditTrigger.Manual"
+                 RowClick="@(args => OnRowClicked(args))"
+                 CommittedItemChanges="OnCommitEdit"
+                 GroupStyleFunc="GroupBackgroundColor">
+
+
         <ToolBarContent>
             <MudText Typo="Typo.h6">Scout Dashboard</MudText>
             <MudSpacer />
@@ -32,98 +52,168 @@
                           AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
         </ToolBarContent>
         <Columns>
-            <SelectColumn T="RegisteredTroopMember" />
-            <PropertyColumn Property="x => x.TroopMemId" Title="ID" />
-            <PropertyColumn Property="x => x.TroopMemRole" Title="Role" />
-            <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="ScoutNumber" />
-            <PropertyColumn Property="x => x.TroopMemFname" Title="First Name" />
-            <PropertyColumn Property="x => x.TroopMemMinitial" Title="M.I" />
-            <PropertyColumn Property="x => x.TroopMemLname" Title="Last Name" />
-            <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" />
-            <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Registration Status" />
-            <PropertyColumn Property="x => x.TroopMemBirthdate" Title="Birth Date" />
-            <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" />
-            <PropertyColumn Property="x => x.TroopMemEmail" Title="Email" />
+
+            <SelectColumn T="RegisteredTroopMember" Hidden="@(_isEditMode)" />
+            <TemplateColumn Title="ID" Sortable="false">
+                <CellTemplate Context="context">
+                    @context.Item.TroopMemId
+                </CellTemplate>
+                <!-- No EditTemplate means it won’t show in edit mode -->
+            </TemplateColumn>
+            <TemplateColumn CellClass="justify-end">
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudButton Size="@Size.Small"
+                                   Variant="@Variant.Filled"
+                                   Color="Color.Error"
+                                   OnClick="@(() => SinglePersonClickedAsync(context.Item))"
+                                   Disabled="@(singleButtonDisabled || _isEditMode)">
+                            Delete
+                        </MudButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+           <TemplateColumn Title="Full Name" Sortable="true">
+                <CellTemplate Context="context">
+                    <span style="white-space: nowrap">
+                        @($"{context.Item.TroopMemFname}{(string.IsNullOrWhiteSpace(context.Item.TroopMemMinitial) ? "" : $" {context.Item.TroopMemMinitial[0]}.")} {context.Item.TroopMemLname}")
+                    </span>
+                </CellTemplate>
+                <EditTemplate Context="context">
+                    <MudStack Row Spacing="1">
+                        <MudTextField @bind-Value="context.Item.TroopMemFname" Label="First Name" Variant="Variant.Outlined" Required="true" />
+                        <MudTextField @bind-Value="context.Item.TroopMemMinitial" Label="M.I." Variant="Variant.Outlined" Required="true" />
+                        <MudTextField @bind-Value="context.Item.TroopMemLname" Label="Last Name" Variant="Variant.Outlined" Required="true" />
+                    </MudStack>
+                </EditTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemRole" Title="Role" Sortable="true">
+                <CellTemplate Context="context">
+                    @context.Item.TroopMemRole
+                </CellTemplate>
+                <EditTemplate Context="context">
+                    <MudSelect T="string" @bind-Value="context.Item.TroopMemRole" Label="Select Role" Variant="Variant.Outlined">
+                        @foreach (var role in troopRoles)
+                        {
+                            <MudSelectItem Value="@role">@role</MudSelectItem>
+                        }
+                    </MudSelect>
+                </EditTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" Sortable="false" />
+            <TemplateColumn Title="Registration Status" Sortable="false">
+                <CellTemplate Context="context"  >
+                    @context.Item.TroopMemRegStatus
+                </CellTemplate>
+                <EditTemplate Context="context" >
+                    <MudSelect T="string" @bind-Value="context.Item.TroopMemRegStatus" Label="Select Status" Variant="Variant.Outlined" >
+                        @foreach (var status in registrationStatuses)
+                        {
+
+                           <MudSelectItem Value="@status">@status</MudSelectItem>
+
+                        }
+                    </MudSelect>
+                </EditTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" Sortable="false" Editable="true" />
+            <PropertyColumn Property="x => x.TroopMemBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="true" Editable="true">
+                <EditTemplate Context="context">
+                    <MudDatePicker @bind-Date="context.Item.TroopMemBirthdate" Label="Birth Date" Required="true" Variant="Variant.Outlined" />
+                </EditTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.TroopMemEmail" Title="Email" Sortable="false" Editable="false" />
+            <TemplateColumn Title="Cluster">
+                <CellTemplate Context="context">
+                    @{
+                        var cluster = TroopClusterService.Data
+                        ?.FirstOrDefault(c => c.ClusterId == context.Item.ClusterId);
+
+                        var clusterName = cluster?.ClusterName ?? "Unassigned";
+
+                        // Assign a different color if Unassigned
+                        var chipColor = clusterName == "Unassigned"
+                        ? Color.Error : Color.Secondary;
+
+                        var chipIcon = clusterName == "Unassigned"
+                        ? Icons.Material.Filled.Warning 
+                        : Icons.Material.Filled.CheckCircle; 
+                    }
+
+                    <MudChip Size="Size.Small" Variant="Variant.Filled" Color="@chipColor">
+                        <MudIcon Icon="@chipIcon"/>
+                        @clusterName
+                    </MudChip>
+                </CellTemplate>
+
+                <EditTemplate Context="context">
+                    <MudSelect T="int?" @bind-Value="context.Item.ClusterId" Label="Select Cluster" Required="true">
+                        @foreach (var cluster in TroopClusterService.Data)
+                        {
+                            <MudSelectItem T="int?" Value="@(cluster.ClusterId)">@cluster.ClusterName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </EditTemplate>
+            </TemplateColumn>
         </Columns>
         <PagerContent>
-
-            <MudDataGridPager T="RegisteredTroopMember" Style="color: #25a129ff;" />
-            <div class="pager-addOn">
-                <MudButton Size="@Size.Small"
-                           Variant="@Variant.Filled"
-                           Color="Color.Error"
-                           OnClick="@(async () => await DeleteMultiplePersonsAsync())"
-                           Disabled="@multipleButtonDisabled">
-                       Delete
-                </MudButton>
-            </div>
-        </PagerContent>
-
-    </MudDataGrid>
-
-    <MudMessageBox @ref="_mudMessageBox" Title="Confirm Deletion" CancelText="Cancel">
-        <MessageContent>
-
-            @if (_isSinglePersonClicked && _selectedPerson is not null)
-            {
-                    <div>Are you sure you want to <b>delete</b> the request of <b>@_selectedPerson.TroopMemFname @_selectedPerson.TroopMemLname</b>?</div>
-            }
-            else if (_isMultiplePersonsClicked && _selectedItems.Any())
-            {
-                <div style="margin-bottom: 1rem;">
-                    <ul style="margin-left: 1rem;">
-                        @foreach (var person in _selectedItems)
-                        {
-                            <li>@person.TroopMemFname @person.TroopMemLname</li>
-                        }
-                    </ul>
-
-                    <div>Are you sure you want to <b>delete</b> the selected registration requests?</div>
-
+                <MudDataGridPager T="RegisteredTroopMember" Style="color: #25a129ff;" />
+                <div class="pager-addOn">
+                    <MudButton Size="@Size.Small"
+                               Variant="@Variant.Filled"
+                               Color="Color.Error"
+                               OnClick="MultiplePersonClickedAsync"
+                               Disabled="@(multipleButtonDisabled || _isEditMode)">
+                        Delete Selected
+                    </MudButton>
+                    <MudSwitch @bind-Value="@_isEditMode" Label="Edit Mode" LabelPlacement="Placement.Start" Color="Color.Primary" />
+                    <MudButton Variant="Variant.Outlined" OnClick="AddClusterDialogAsync" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircle" Style="padding:0; width: 9rem; border-radius: 3rem;">
+                        Add Cluster
+                    </MudButton>
                 </div>
-            }
-        </MessageContent>
-        <YesButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Error"
-                       StartIcon="@(Icons.Material.Filled.Delete)"
-                       OnClick="async () => await ConfirmActionAsync()">
-                Delete
-            </MudButton>
-        </YesButton>
-    </MudMessageBox>
+        </PagerContent>
+    </MudDataGrid>
 
 </div>
 @code {
-    private bool _isDeleteMode => delete_switch;
-
-    private string _searchString = string.Empty;
-
-    private IEnumerable<RegisteredTroopMember> FilteredElements =>
-    TroopService.Data?.Where(x => x.TroopMemTroopNumber == currentLeaderID) ?? Enumerable.Empty<RegisteredTroopMember>();
-
-    private HashSet<RegisteredTroopMember> _selectedItems = new();
-
-    private HashSet<int> _selectedIds = new();
-    private HashSet<RegisteredTroopMember> GetSelectedItems()
-    {
-        if (TroopService.Data == null) return new();
-        return TroopService.Data.Where(x => _selectedIds.Contains(x.TroopMemId)).ToHashSet();
-    }
-
-    private bool _isSinglePersonClicked;
-    private bool _isMultiplePersonsClicked;
-    private MudMessageBox _mudMessageBox;
-    private string _state = "Message box hasn't been opened yet";
     private RegisteredTroopMember? _selectedPerson;
+    private HubConnection? _hubConnection;
 
+    private string[] troopRoles = { "Twinklers", "Star", "Junior", "Senior", "Cadet" };
+    private string[] registrationStatuses = { "New","Existing" };
     private bool multipleButtonDisabled = true;
     private bool singleButtonDisabled = false;
+    private string _searchString = string.Empty;
+    private bool isSubmitting = false;
+    public bool delete_switch { get; set; } = true;
+    private bool _isDeleteMode => delete_switch;
+    private bool _isEditMode;
+    private bool _readOnly;
+    private int _currentTroopLeaderId;
+    private MudDataGrid<RegisteredTroopMember> dataGrid;
+
+    private IEnumerable<RegisteredTroopMember> FilteredElements =>
+    RegisteredService.Data?.Where(x => x.TroopMemTroopNumber == _currentTroopLeaderId)
+    ?? Enumerable.Empty<RegisteredTroopMember>();
+
+    private HashSet<RegisteredTroopMember> _selectedItems = new();
+    private HashSet<int> _selectedIds = new();
+
+    private HashSet<RegisteredTroopMember> GetSelectedItems()
+    {
+        if (RegisteredService.Data == null) return new();
+        return RegisteredService.Data.Where(x => _selectedIds.Contains(x.TroopMemId)).ToHashSet();
+    }
 
     void SelectedItemsChanged(HashSet<RegisteredTroopMember> selected)
     {
+        if (_isEditMode)
+        {
+            return;
+        }
         _selectedItems = selected;
         _selectedIds = selected.Select(i => i.TroopMemId).ToHashSet();
+
         multipleButtonDisabled = !_selectedItems.Any();
         singleButtonDisabled = _selectedItems.Any();
     }
@@ -136,152 +226,249 @@
 
         return (x.TroopMemFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
             || (x.TroopMemLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemRole?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemGradeOrYear?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemRegStatus?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemBeneficiary?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemBirthdate?.ToString("MMMM dd, yyyy").Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
             || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
     };
 
-    private ApplicationUser currentUser;
-    private int currentLeaderID;
-    private string troopLeaderFname;
-    private bool isLoading = true;
-    private string errorMessage;
-
     protected override async Task OnInitializedAsync()
     {
-        TroopService.OnChanged += HandleDataChanged;
-        await TroopService.LoadDataAsync(); // automatically fetch from DB
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
 
-        isLoading = true;
-
-        try
+        if (user.Identity?.IsAuthenticated ?? false)
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            if (user.Identity?.IsAuthenticated ?? false)
+            if (!string.IsNullOrEmpty(userId))
             {
-                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                currentUser = await UserManager.FindByIdAsync(userId);
+                await TroopLeaderAccountService.LoadDataAsync();
 
-                if (currentUser != null)
+                var account = TroopLeaderAccountService.Data
+                    .FirstOrDefault(a => a.Id == userId);
+
+                if (account != null)
                 {
-                    // Fetch troop leader name from related data
-                    var account = await GetDataFromDB.RegisteredTroopLeaderAccounts
-                        .FirstOrDefaultAsync(a => a.Id == userId);
+                    var troopInfo = GetTroopLeaderData.RegisteredTroopLeaders
+                        .FirstOrDefault(l => l.LeaderId == account.LeaderId);
 
-                    if (account != null)
+                    if (troopInfo != null)
                     {
-                        currentLeaderID = account.LeaderId;
+                        _currentTroopLeaderId = troopInfo.LeaderId;
                     }
                 }
             }
-            else
-            {
-                errorMessage = "User is not authenticated.";
-            }
         }
-        catch (Exception ex)
-        {
-            errorMessage = $"Something went wrong: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
-    }
 
+        await RegisteredService.LoadDataAsync();
+        await TroopClusterService.LoadDataAsync();
+        RegisteredService.OnChanged += HandleDataChanged;
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(RegisteredTroopMember))
+            {
+                await RegisteredService.LoadDataAsync();  // This updates local cache and raises UI event
+            }
+
+            if (tableName == nameof(TroopCluster))   // <-- refresh clusters if updated
+                await TroopClusterService.LoadDataAsync();
+        });
+
+        await _hubConnection.StartAsync();
+
+    }
 
     private void HandleDataChanged()
     {
-
+        if (RegisteredService.Data != null && _selectedIds.Any())
+        {
+            _selectedItems = RegisteredService.Data
+                .Where(x => _selectedIds.Contains(x.TroopMemId))
+                .ToHashSet();
+        }
+        _selectedItems = new HashSet<RegisteredTroopMember>(_selectedItems);
         InvokeAsync(StateHasChanged); // Refresh UI when data changes
     }
 
-    public void Dispose()
+    public async void Dispose()
     {
-        // Clean up event subscription to prevent memory leaks
-        TroopService.OnChanged -= HandleDataChanged;
-    }
+        RegisteredService.OnChanged -= HandleDataChanged;
 
-    public bool delete_switch { get; set; } = false;
-
-    private async Task DeleteMultiplePersonsAsync()
-    {
-        if (_selectedItems is null || !_selectedItems.Any())
-            return;
-
-        _isSinglePersonClicked = false;
-        _isMultiplePersonsClicked = true;
-
-        bool? result = await _mudMessageBox.ShowAsync();
-
-        if (result == true)
+        if (_hubConnection is not null)
         {
-            await ConfirmActionAsync(); // <-- This is now correctly called after clicking "Confirm"
+            await _hubConnection.DisposeAsync();
         }
-
-
-        _state = result is null
-            ? "Canceled"
-            : $"{"Deleted"} {string.Join(", ", _selectedItems.Select(p => $"{p.TroopMemFname} {p.TroopMemLname}"))}";
-        StateHasChanged();
     }
 
     private async Task DeletePerson(RegisteredTroopMember person)
     {
+        if (person == null) return;
 
-        var toDelete = await GetDataFromDB.RegisteredTroopMembers
-       .FirstOrDefaultAsync(x => x.TroopMemId == person.TroopMemId);
-
-        if (toDelete is not null)
+        try
         {
-            GetDataFromDB.RegisteredTroopMembers.Remove(toDelete);
-        }
+            // Find the member in the database
+            var member = await GetTroopLeaderData.RegisteredTroopMembers
+                .FirstOrDefaultAsync(m => m.TroopMemId == person.TroopMemId);
 
-        // Step 2: Remove link from RegisteredTroopMemberAccounts table
-        var accountLink = await GetDataFromDB.RegisteredTroopMemberAccounts
-            .FirstOrDefaultAsync(x => x.TroopMemId == person.TroopMemId);
-
-        if (accountLink != null)
-        {
-            // Step 3: Delete the Identity user
-            var identityUser = await UserManager.FindByIdAsync(accountLink.Id);
-            if (identityUser != null)
+            if (member != null)
             {
-                var deleteResult = await UserManager.DeleteAsync(identityUser);
-                if (!deleteResult.Succeeded)
-                {
-                    foreach (var error in deleteResult.Errors)
-                    {
-                        Snackbar.Add($"Error deleting account: {error.Description}", Severity.Error);
-                    }
-                    return;
-                }
+                // Remove the troop member
+                GetTroopLeaderData.RegisteredTroopMembers.Remove(member);
+                await GetTroopLeaderData.SaveChangesAsync();
+
+                // Notify any service or UI updates
+                await RegisteredService.NotifyChangedAsync();
+
+                Snackbar.Add(
+                    $"{person.TroopMemFname} {person.TroopMemMinitial} {person.TroopMemLname} has been removed successfully!",
+                    Severity.Success
+                );
             }
-
-            // Step 4: Remove account link
-            GetDataFromDB.RegisteredTroopMemberAccounts.Remove(accountLink);
+            else
+            {
+                Snackbar.Add("Member not found.", Severity.Warning);
+            }
         }
-
-        // Step 5: SignalR/UI update
-        TroopService.Delete(person);
-
-        // Step 6: Save all changes
-        await GetDataFromDB.SaveChangesAsync();
-
-        Snackbar.Add($"{person.TroopMemFname} {person.TroopMemMinitial} {person.TroopMemLname} has been removed successfully!", Severity.Success);
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting member: {ex.Message}", Severity.Error);
+        }
     }
 
-    private async Task ConfirmActionAsync()
+
+    private async Task ShowConfirmationDialog(bool isSingle, bool isDelete)
     {
 
-        foreach (var person in _selectedItems.ToList())
+        string message;
+        string title;
+
+        if (isSingle && _selectedPerson != null)
         {
-            await DeletePerson(person);
+            title = "Confirm Deletion";
+            message = $"Are you sure you want to delete the registration request of <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b> as a <b>{_selectedPerson.TroopMemRole}</b>?";
+        }
+        else if (!isSingle && _selectedItems.Any())
+        {
+            title = "Confirm Multiple Deletions";
+            var names = string.Join("</li><li>", _selectedItems.Select(p => $"{p.TroopMemFname} {p.TroopMemLname}"));
+            message = $"Are you sure you want to delete these registration requests?<ul><li>{names}</li></ul>";
+        }
+        else
+        {
+            return;
         }
 
+        var parameters = new DialogParameters {
+        { "Content", message },
+        { "IsDelete", isDelete }  // Pass the delete mode to the dialog
+        };
 
-        _isSinglePersonClicked = false;
-        _isMultiplePersonsClicked = false;
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+
+        var dialog = DialogService.Show<ConfirmationDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            if (isSingle)
+            {
+                if (isDelete) await DeletePerson(_selectedPerson);
+            }
+            else
+            {
+                foreach (var person in _selectedItems.ToList())
+                {
+                    if (isDelete) await DeletePerson(person);
+                }
+            }
+        }
+
     }
+
+    private async Task SinglePersonClickedAsync(RegisteredTroopMember person)
+    {
+        _selectedPerson = person; // Store the selected person
+        await ShowConfirmationDialog(isSingle: true, isDelete: delete_switch);
+    }
+
+    private async Task MultiplePersonClickedAsync()
+    {
+        if (_selectedItems == null || !_selectedItems.Any()) return;
+        await ShowConfirmationDialog(isSingle: false, isDelete: delete_switch);
+    }
+
+    private async Task OnCommitEdit(RegisteredTroopMember item)
+    {
+
+        if (string.IsNullOrWhiteSpace(item.TroopMemFname) ||
+            string.IsNullOrWhiteSpace(item.TroopMemLname) ||
+            string.IsNullOrWhiteSpace(item.TroopMemRole) ||
+            string.IsNullOrWhiteSpace(item.TroopMemGradeOrYear) ||
+            string.IsNullOrWhiteSpace(item.TroopMemRegStatus))
+        {
+            Snackbar.Add("Please fill in all required fields.", Severity.Error);
+            await RegisteredService.LoadDataAsync();
+        }
+        else
+        {
+            await RegisteredService.Update(item);
+            Snackbar.Add("Row updated", Severity.Success);
+        }
+    }
+
+    private async Task OnRowClicked(DataGridRowClickEventArgs<RegisteredTroopMember> args)
+    {
+        if (_isEditMode)
+        {
+            await dataGrid.SetEditingItemAsync(args.Item);
+        }
+    }
+
+    private string GroupBackgroundColor(GroupDefinition<RegisteredTroopMember> item)
+    {
+
+        switch (item.Grouping.Key?.ToString())
+        {
+            case "Twinklers":
+                return "background-color: #f467a4; color: #ffffff;"; // Pink
+
+            case "Star":
+                return "background-color: #f6e03a; color: #ffffff;"; // Yellow
+
+            case "Junior":
+                return "background-color: #fdbd23; color: #ffffff;"; // Green
+
+            case "Senior":
+                return "background-color: #ff8546; color: #ffffff;"; // Blue
+
+            case "Cadet":
+                return "background-color: #a821e5; color: #ffffff;"; // Purple
+
+            default:
+                return "background-color: transparent;"; // fallback
+        }
+    }
+
+    private Task AddClusterDialogAsync()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+
+        return DialogService.ShowAsync<AddClusterDialog>("Simple Dialog", options);
+    }
+
+
+
+    private bool _groupByPosition = true; // enable grouping on load
+    private int _groupOrder = 0;              // group priority
+    private bool _groupExpanded = true;       // whether it's expanded initially
 }

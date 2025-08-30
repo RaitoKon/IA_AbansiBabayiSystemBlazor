@@ -28,4 +28,12 @@ public partial class RegisteredTroopMember
     public string? TroopMemEmail { get; set; }
 
     public int? TroopMemTroopNumber { get; set; }
+
+    public int? ClusterId { get; set; }
+
+    public virtual TroopCluster? Cluster { get; set; }
+
+    public virtual ICollection<TroopInformation> TroopInformations { get; set; } = new List<TroopInformation>();
+
+    public virtual ICollection<TroopMemberAccount> TroopMemberAccounts { get; set; } = new List<TroopMemberAccount>();
 }

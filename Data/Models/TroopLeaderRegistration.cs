@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace IA_AbansiBabayiSystemBlazor.Data.Models;
 
@@ -8,36 +7,25 @@ public partial class TroopLeaderRegistration
 {
     public int LeaderId { get; set; }
 
-    [Required]
-    public string? LeaderPosition { get; set; }
+    public string LeaderPosition { get; set; } = null!;
 
-    [Required]
-    public string? LeaderRole { get; set; }
+    public string LeaderRole { get; set; } = null!;
 
-    public int? CoLeaderTroopNumber { get; set; }
+    public int? ColeaderTroopNo { get; set; }
 
-    [Required]
-    public string? LeaderTorNT { get; set; }
+    public string LeaderTorNT { get; set; } = null!;
 
-    [Required]
-    public string? LeaderRegStatus { get; set; }
+    public string LeaderRegStatus { get; set; } = null!;
 
-    [Required]
-    public string? LeaderLname { get; set; }
+    public string LeaderLname { get; set; } = null!;
 
-    [Required]
-    public string? LeaderFname { get; set; }
+    public string LeaderFname { get; set; } = null!;
 
-    [Required]
-    public string? LeaderMInitial { get; set; }
+    public string LeaderMinitial { get; set; } = null!;
 
-    [Required]
-    public DateTime? LeaderBirthdate { get; set; }
+    public DateTime LeaderBirthdate { get; set; }
 
-    [Required]
-    public string? LeaderBeneficiary { get; set; }
+    public string LeaderBeneficiary { get; set; } = null!;
 
-    [Required]
-    public string? LeaderEmail { get; set; }
-
+    public string LeaderEmail { get; set; } = null!;
 }

@@ -12,6 +12,7 @@
 @inject TableDataService<TroopLeaderRegistration> TroopService
 @inject TableDataService<RegisteredTroopLeader> RegisteredService
 @inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
+@inject TableDataService<TroopCluster> TroopClusterService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -65,7 +66,7 @@
             <TemplateColumn Title="Full Name" Sortable="true" >
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMInitial) ? "" : $" {context.Item.LeaderMInitial[0]}.")} {context.Item.LeaderLname}")
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMinitial) ? "" : $" {context.Item.LeaderMinitial[0]}.")} {context.Item.LeaderLname}")
                     </span>
                 </CellTemplate>
             </TemplateColumn>
@@ -145,8 +146,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await TroopService.LoadDataAsync();
         TroopService.OnChanged += HandleDataChanged;
+        await TroopService.LoadDataAsync();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
@@ -222,7 +223,7 @@
         var registeredLeader = new RegisteredTroopLeader
             {
                 LeaderFname = person.LeaderFname,
-                LeaderMInitial = person.LeaderMInitial,
+                LeaderMinitial = person.LeaderMinitial,
                 LeaderLname = person.LeaderLname,
                 LeaderPosition = person.LeaderPosition,
                 LeaderRole = person.LeaderRole,
@@ -246,7 +247,7 @@
 
         await TroopLeaderAccountService.Add(accountLink);
 
-        // await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.LeaderEmail, person.LeaderFname, tempPassword);
+        await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.LeaderEmail, person.LeaderFname, tempPassword);
 
         // Step 4: Remove from pending registration
         await TroopService.Delete(person);
@@ -264,7 +265,7 @@
             await TroopService.Delete(person);
 
             // Show snackbar
-            Snackbar.Add($"{person.LeaderFname} {person.LeaderMInitial} {person.LeaderLname} has been removed successfully!", Severity.Success);
+            Snackbar.Add($"{person.LeaderFname} {person.LeaderMinitial} {person.LeaderLname} has been removed successfully!", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -298,32 +299,34 @@
             return;
         }
 
-        var parameters = new DialogParameters {
-        { "Content", message },
-        { "IsDelete", isDelete }  // Pass the delete mode to the dialog
+        var parameters = new DialogParameters
+        {
+            { "Content", message },
+            { "IsDelete", isDelete },
+            { "OnConfirmed", EventCallback.Factory.Create(this, async () =>
+                {
+                    if (isSingle)
+                    {
+                        if (isDelete) await DeletePerson(_selectedPerson);
+                        else await RegisterPerson(_selectedPerson);
+                    }
+                    else
+                    {
+                        foreach (var person in _selectedItems.ToList())
+                        {
+                            if (isDelete) await DeletePerson(person);
+                            else await RegisterPerson(person);
+                        }
+                    }
+                })
+            }
         };
+
 
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
 
         var dialog = DialogService.Show<ConfirmationDialog>(title, parameters, options);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            if (isSingle)
-            {
-                if (isDelete) await DeletePerson(_selectedPerson);
-                else await RegisterPerson(_selectedPerson);
-            }
-            else
-            {
-                foreach (var person in _selectedItems.ToList())
-                {
-                    if (isDelete) await DeletePerson(person);
-                    else await RegisterPerson(person);
-                }
-            }
-        }
 
     }
 

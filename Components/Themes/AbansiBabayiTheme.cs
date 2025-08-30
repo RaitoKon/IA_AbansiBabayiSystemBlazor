@@ -73,7 +73,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Themes
                 GrayDark = "#757575",
                 GrayDarker = "#616161",
                 OverlayDark = "rgba(33,33,33,0.4980392156862745)",
-                OverlayLight = "rgba(255,255,255,0.4980392156862745)",
+                OverlayLight = "linear-gradient(42deg,rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 100%)",
             },
             PaletteDark = new PaletteDark()
             {

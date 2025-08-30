@@ -11,6 +11,7 @@
 @inject TableDataService<TroopMemberRegistration> TroopService
 @inject TableDataService<RegisteredTroopMember> RegisteredService
 @inject TableDataService<TroopMemberAccount> TroopMemberAccountService
+@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -37,9 +38,11 @@
                  QuickFilter="@_quickFilter"
                  Hideable="true"
                  SelectedItems="@_selectedItems"
-                 SelectedItemsChanged="SelectedItemsChanged">
+                 SelectedItemsChanged="SelectedItemsChanged"
+                 GroupStyleFunc="GroupBackgroundColor">
+
         <ToolBarContent>
-            <MudText Typo="Typo.h6">Troop Leader Registration</MudText>
+            <MudText Typo="Typo.h6">Scout Registration</MudText>
             <MudSpacer />
             <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
                           AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
@@ -115,8 +118,12 @@
     private string _searchString = string.Empty;
     private bool isSubmitting = false;
 
+    private int _currentTroopLeaderId;
+    private ApplicationUser currentUser;
+
     private IEnumerable<TroopMemberRegistration> FilteredElements =>
-    TroopService.Data ?? Enumerable.Empty<TroopMemberRegistration>();
+    (TroopService.Data ?? Enumerable.Empty<TroopMemberRegistration>())
+    .Where(x => x.TroopMemTroopNumber == _currentTroopLeaderId);
 
     private HashSet<TroopMemberRegistration> _selectedItems = new();
     private HashSet<int> _selectedIds = new();
@@ -144,6 +151,34 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await TroopLeaderAccountService.LoadDataAsync();
+
+                var account = TroopLeaderAccountService.Data
+                    .FirstOrDefault(a => a.Id == userId);
+
+                if (account != null)
+                {
+                    var troopInfo = GetTroopMemberData.RegisteredTroopLeaders
+                        .FirstOrDefault(l => l.LeaderId == account.LeaderId);
+
+                    if (troopInfo != null)
+                    {
+                        _currentTroopLeaderId = troopInfo.LeaderId;
+                        // or troopInfo.TroopNumber if that’s what you want to filter by
+                    }
+                }
+            }
+        }
+
         await TroopService.LoadDataAsync();
         TroopService.OnChanged += HandleDataChanged;
 
@@ -230,11 +265,11 @@
             TroopMemBirthdate = person.TroopMemBirthdate,
             TroopMemBeneficiary = person.TroopMemBeneficiary,
             TroopMemEmail = userNewEmail,
+            TroopMemTroopNumber = _currentTroopLeaderId,
         };
-
         await RegisteredService.Add(registeredScout);
 
-        await UserManager.AddToRoleAsync(newUser, "Troop Leader");
+        await UserManager.AddToRoleAsync(newUser, "Scout");
 
         // Step 3: Link RegisteredTroopMember to user account
         var accountLink = new TroopMemberAccount
@@ -297,32 +332,33 @@
             return;
         }
 
-        var parameters = new DialogParameters {
-        { "Content", message },
-        { "IsDelete", isDelete }  // Pass the delete mode to the dialog
+        var parameters = new DialogParameters
+        {
+            { "Content", message },
+            { "IsDelete", isDelete },
+            { "OnConfirmed", EventCallback.Factory.Create(this, async () =>
+                {
+                    if (isSingle)
+                    {
+                        if (isDelete) await DeletePerson(_selectedPerson);
+                        else await RegisterPerson(_selectedPerson);
+                    }
+                    else
+                    {
+                        foreach (var person in _selectedItems.ToList())
+                        {
+                            if (isDelete) await DeletePerson(person);
+                            else await RegisterPerson(person);
+                        }
+                    }
+                })
+            }
         };
 
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
 
         var dialog = DialogService.Show<ConfirmationDialog>(title, parameters, options);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            if (isSingle)
-            {
-                if (isDelete) await DeletePerson(_selectedPerson);
-                else await RegisterPerson(_selectedPerson);
-            }
-            else
-            {
-                foreach (var person in _selectedItems.ToList())
-                {
-                    if (isDelete) await DeletePerson(person);
-                    else await RegisterPerson(person);
-                }
-            }
-        }
 
     }
 
@@ -337,6 +373,31 @@
     {
         if (_selectedItems == null || !_selectedItems.Any()) return;
         await ShowConfirmationDialog(isSingle: false, isDelete: delete_switch);
+    }
+
+    private string GroupBackgroundColor(GroupDefinition<TroopMemberRegistration> item)
+    {
+
+        switch (item.Grouping.Key?.ToString())
+        {
+            case "Twinklers":
+                return "background-color: #f467a4; color: #ffffff;"; // Pink
+
+            case "Star":
+                return "background-color: #f6e03a; color: #ffffff;"; // Yellow
+
+            case "Junior":
+                return "background-color: #fdbd23; color: #ffffff;"; // Green
+
+            case "Senior":
+                return "background-color: #ff8546; color: #ffffff;"; // Blue
+
+            case "Cadet":
+                return "background-color: #a821e5; color: #ffffff;"; // Purple
+
+            default:
+                return "background-color: transparent;"; // fallback
+        }
     }
 
     private bool _groupByPosition = true; // enable grouping on load
