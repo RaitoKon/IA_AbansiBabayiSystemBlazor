@@ -22,12 +22,73 @@ namespace IA_AbansiBabayiSystemBlazor.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.AccountStatus", b =>
+                {
+                    b.Property<int>("AccountStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountStatusId"));
+
+                    b.Property<string>("AccountStatusDescription")
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("AccountStatusId");
+
+                    b.ToTable("AccountStatus", (string)null);
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.AddEvent", b =>
+                {
+                    b.Property<int>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EventId"));
+
+                    b.Property<DateTime?>("EventDate")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("EventDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("EventImagePath")
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("EventLocation")
+                        .HasMaxLength(150)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("EventTitle")
+                        .HasMaxLength(150)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(150)");
+
+                    b.HasKey("EventId");
+
+                    b.ToTable("AddEvents");
+                });
+
             modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AccountStatusId")
                         .HasColumnType("int");
 
                     b.Property<string>("ConcurrencyStamp")
@@ -79,6 +140,8 @@ namespace IA_AbansiBabayiSystemBlazor.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountStatusId");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -90,361 +153,412 @@ namespace IA_AbansiBabayiSystemBlazor.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.RegisteredTroopLeader", b =>
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.LeaderPosition", b =>
+                {
+                    b.Property<int>("LeaderPositionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LeaderPositionId"));
+
+                    b.Property<string>("LeaderPositionName")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("LeaderPosition");
+
+                    b.HasKey("LeaderPositionId")
+                        .HasName("PK_LeaderRole");
+
+                    b.ToTable("LeaderPosition", (string)null);
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.Product", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ProductID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductId"));
+
+                    b.Property<int?>("ProductCategoryId")
+                        .HasColumnType("int")
+                        .HasColumnName("ProductCategoryID");
+
+                    b.Property<string>("ProductDescription")
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("ProductImagePath")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ProductName")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<decimal?>("ProductPrice")
+                        .HasColumnType("decimal(8, 2)");
+
+                    b.Property<int?>("ProductStock")
+                        .HasColumnType("int");
+
+                    b.HasKey("ProductId");
+
+                    b.HasIndex("ProductCategoryId");
+
+                    b.ToTable("Product", (string)null);
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductCategory", b =>
+                {
+                    b.Property<int>("ProductCategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ProductCategoryID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductCategoryId"));
+
+                    b.Property<string>("ProductCategoryName")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("ProductCategoryId");
+
+                    b.ToTable("ProductCategory", (string)null);
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductPurchase", b =>
+                {
+                    b.Property<int>("ProductPurchaseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ProductPurchaseID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductPurchaseId"));
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int")
+                        .HasColumnName("ProductID");
+
+                    b.Property<DateTime?>("ProductPurchaseDate")
+                        .HasColumnType("datetime");
+
+                    b.Property<decimal?>("ProductPurchasePrice")
+                        .HasColumnType("decimal(8, 2)");
+
+                    b.Property<int?>("ProductPurchaseQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TotalCost")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("decimal(19, 2)")
+                        .HasComputedColumnSql("([ProductPurchaseQuantity]*[ProductPurchasePrice])", false);
+
+                    b.HasKey("ProductPurchaseId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductPurchases");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductSale", b =>
+                {
+                    b.Property<int>("ProductSaleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ProductSaleID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductSaleId"));
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int")
+                        .HasColumnName("ProductID");
+
+                    b.Property<DateTime?>("ProductSaleDate")
+                        .HasColumnType("datetime");
+
+                    b.Property<decimal?>("ProductSalePrice")
+                        .HasColumnType("decimal(8, 2)");
+
+                    b.Property<int?>("ProductSaleQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TotalCost")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("decimal(19, 2)")
+                        .HasComputedColumnSql("([ProductSaleQuantity]*[ProductSalePrice])", true);
+
+                    b.HasKey("ProductSaleId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductSales");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopDetail", b =>
+                {
+                    b.Property<int>("TroopDetailsId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TroopDetailsId"));
+
+                    b.Property<string>("TroopAddress")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("TroopAgeLevel")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("TroopBarangayCommittee")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<DateTime>("TroopBirthdate")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime>("TroopDateApplied")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("TroopDistrictCommittee")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("TroopMailingAddress")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("TroopName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("TroopSponsoringGroup")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<string>("TroopStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("TroopTroopTelNo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TroopType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("TroopDetailsId");
+
+                    b.ToTable("TroopDetails");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopInformation", b =>
+                {
+                    b.Property<int>("TroopInfoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TroopInfoId"));
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TroopDetailsId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TroopLeaderId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TroopMemId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TroopNo")
+                        .HasColumnType("int");
+
+                    b.HasKey("TroopInfoId");
+
+                    b.HasIndex(new[] { "TroopDetailsId" }, "IX_TroopInformations_TroopDetailsId");
+
+                    b.HasIndex(new[] { "TroopLeaderId" }, "IX_TroopInformations_TroopLeaderId");
+
+                    b.HasIndex(new[] { "TroopMemId" }, "IX_TroopInformations_TroopMemId");
+
+                    b.ToTable("TroopInformations");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeader", b =>
                 {
                     b.Property<int>("LeaderId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("leaderID");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LeaderId"));
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("LeaderBeneficiary")
-                        .HasMaxLength(150)
+                        .HasMaxLength(250)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("leaderBeneficiary");
+                        .HasColumnType("varchar(250)");
 
                     b.Property<DateTime?>("LeaderBirthdate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("leaderBirthdate");
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("LeaderDateRegistered")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("LeaderEmail")
-                        .HasMaxLength(50)
+                        .HasMaxLength(100)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("leaderEmail");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("LeaderFname")
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderFname")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderLname")
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderLname")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderMInitial")
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderMInitial")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderPosition")
                         .HasMaxLength(50)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("leaderPosition");
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("LeaderLname")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("LeaderMname")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int?>("LeaderPositionId")
+                        .HasColumnType("int");
 
                     b.Property<string>("LeaderRegStatus")
                         .HasMaxLength(50)
-                        .HasColumnType("nchar(50)")
-                        .HasColumnName("leaderRegStatus")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderRole")
-                        .HasMaxLength(20)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("leaderRole");
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<string>("LeaderTorNT")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("leaderTorNT");
-
-                    b.HasKey("LeaderId");
-
-                    b.ToTable("REGISTERED_TROOP_LEADER", (string)null);
-                });
-
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.RegisteredTroopMember", b =>
-                {
-                    b.Property<int>("TroopMemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TroopMemId"));
-
-                    b.Property<string>("TroopMemBeneficiary")
-                        .HasMaxLength(150)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("troopMemBeneficiary");
-
-                    b.Property<DateTime?>("TroopMemBirthdate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("troopMemBirthdate");
-
-                    b.Property<string>("TroopMemEmail")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemEmail");
-
-                    b.Property<string>("TroopMemFname")
+                    b.Property<string>("LeaderRegisteredEmail")
                         .HasMaxLength(100)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemFname");
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("LeaderRole")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("LeaderTorNt")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("LeaderTorNT");
+
+                    b.Property<int?>("LeaderTroopNo")
+                        .HasColumnType("int")
+                        .HasColumnName("LeaderTroopNo");
+
+                    b.HasKey("LeaderId")
+                        .HasName("PK_RegisteredTroopLeaders");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("LeaderPositionId");
+
+                    b.ToTable("TroopLeaders");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopMember", b =>
+                {
+                    b.Property<int>("TroopMemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("TroopMemBeneficiary")
+                        .HasMaxLength(250)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<DateTime?>("TroopMemBirthdate")
+                        .HasColumnType("datetime");
+
+                    b.Property<DateTime?>("TroopMemDateRegistered")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("TroopMemEmail")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("TroopMemEmailRegistered")
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("TroopMemFname")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("TroopMemGradeOrYear")
                         .HasMaxLength(50)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemGradeOrYear");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("TroopMemLname")
-                        .HasMaxLength(100)
+                        .HasMaxLength(50)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemLname");
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<string>("TroopMemMinitial")
-                        .HasMaxLength(100)
+                    b.Property<string>("TroopMemMname")
+                        .HasMaxLength(50)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemMInitial");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("TroopMemRegStatus")
                         .HasMaxLength(50)
                         .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemRegStatus");
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<string>("TroopMemRole")
-                        .HasMaxLength(20)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("troopMemRole");
+                    b.Property<int>("TroopMemRole")
+                        .HasColumnType("int");
 
                     b.Property<int?>("TroopMemScoutNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemScoutNumber");
+                        .HasColumnType("int");
 
-                    b.Property<int?>("TroopMemTroopNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemTroopNumber");
+                    b.HasKey("TroopMemId")
+                        .HasName("PK_RegisteredTroopMembers");
 
-                    b.HasKey("TroopMemId");
+                    b.HasIndex(new[] { "ApplicationUserId" }, "IX_TroopMembers_ApplicationUserId");
 
-                    b.ToTable("REGISTERED_TROOP_MEMBER", (string)null);
-                });
-
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeaderAccount", b =>
-                {
-                    b.Property<int>("AccountsId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("accountsID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountsId"));
-
-                    b.Property<string>("Id")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("LeaderId")
-                        .HasColumnType("int")
-                        .HasColumnName("leaderID");
-
-                    b.HasKey("AccountsId")
-                        .HasName("PK__TROOP_LE__4A22408A41AD76EC");
-
-                    b.HasIndex("Id");
-
-                    b.HasIndex("LeaderId");
-
-                    b.ToTable("TROOP_LEADER_ACCOUNTS", (string)null);
-                });
-
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeaderRegistration", b =>
-                {
-                    b.Property<int>("LeaderId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("leaderID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LeaderId"));
-
-                    b.Property<int?>("CoLeaderTroopNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("coleaderTroopNo");
-
-                    b.Property<string>("LeaderBeneficiary")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("leaderBeneficiary");
-
-                    b.Property<DateTime?>("LeaderBirthdate")
-                        .IsRequired()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("leaderBirthdate");
-
-                    b.Property<string>("LeaderEmail")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("leaderEmail");
-
-                    b.Property<string>("LeaderFname")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderFname")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderLname")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderLname")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderMInitial")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nchar(100)")
-                        .HasColumnName("leaderMInitial")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderPosition")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("leaderPosition");
-
-                    b.Property<string>("LeaderRegStatus")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nchar(50)")
-                        .HasColumnName("leaderRegStatus")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderRole")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nchar(50)")
-                        .HasColumnName("leaderRole")
-                        .IsFixedLength();
-
-                    b.Property<string>("LeaderTorNT")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("leaderTorNT");
-
-                    b.HasKey("LeaderId");
-
-                    b.ToTable("TROOP_LEADER_REGISTRATION", (string)null);
-                });
-
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopMemberAccount", b =>
-                {
-                    b.Property<int>("AccountsId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("accountsID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountsId"));
-
-                    b.Property<string>("Id")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("TroopMemId")
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemID");
-
-                    b.HasKey("AccountsId")
-                        .HasName("PK__TROOP_ME__4A22408AB573DA3D");
-
-                    b.ToTable("TROOP_MEMBER_ACCOUNTS", (string)null);
-                });
-
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopMemberRegistration", b =>
-                {
-                    b.Property<int>("TroopMemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TroopMemId"));
-
-                    b.Property<string>("TroopMemBeneficiary")
-                        .HasMaxLength(150)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("troopMemBeneficiary");
-
-                    b.Property<DateTime?>("TroopMemBirthdate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("troopMemBirthdate");
-
-                    b.Property<string>("TroopMemEmail")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemEmail");
-
-                    b.Property<string>("TroopMemFname")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemFname");
-
-                    b.Property<string>("TroopMemGradeOrYear")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemGradeOrYear");
-
-                    b.Property<string>("TroopMemLname")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemLname");
-
-                    b.Property<string>("TroopMemMinitial")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("troopMemMInitial");
-
-                    b.Property<string>("TroopMemRegStatus")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("troopMemRegStatus");
-
-                    b.Property<string>("TroopMemRole")
-                        .HasMaxLength(10)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("troopMemRole");
-
-                    b.Property<int?>("TroopMemScoutNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemScoutNumber");
-
-                    b.Property<int?>("TroopMemTroopNumber")
-                        .HasColumnType("int")
-                        .HasColumnName("troopMemTroopNumber");
-
-                    b.HasKey("TroopMemId");
-
-                    b.ToTable("TROOP_MEMBER_REGISTRATION", (string)null);
+                    b.ToTable("TroopMembers");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -580,23 +694,86 @@ namespace IA_AbansiBabayiSystemBlazor.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeaderAccount", b =>
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ApplicationUser", b =>
+                {
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.AccountStatus", "AccountStatus")
+                        .WithMany("AspNetUsers")
+                        .HasForeignKey("AccountStatusId")
+                        .HasConstraintName("FK_AspNetUsers_AccountStatus");
+
+                    b.Navigation("AccountStatus");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.Product", b =>
+                {
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.ProductCategory", "ProductCategory")
+                        .WithMany("Products")
+                        .HasForeignKey("ProductCategoryId")
+                        .HasConstraintName("FK_Product_ProductCategory");
+
+                    b.Navigation("ProductCategory");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductPurchase", b =>
+                {
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.Product", "Product")
+                        .WithMany("ProductPurchases")
+                        .HasForeignKey("ProductId")
+                        .HasConstraintName("FK_ProductPurchases_Product");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductSale", b =>
+                {
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.Product", "Product")
+                        .WithMany("ProductSales")
+                        .HasForeignKey("ProductId")
+                        .HasConstraintName("FK_ProductSales_Product");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopInformation", b =>
+                {
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.TroopDetail", "TroopDetails")
+                        .WithMany("TroopInformations")
+                        .HasForeignKey("TroopDetailsId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeader", "TroopLeader")
+                        .WithMany("TroopInformations")
+                        .HasForeignKey("TroopLeaderId")
+                        .HasConstraintName("FK_TroopInformations_RegisteredTroopLeaders_TroopLeaderId");
+
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.TroopMember", "TroopMem")
+                        .WithMany("TroopInformations")
+                        .HasForeignKey("TroopMemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("FK_TroopInformations_RegisteredTroopMembers_TroopMemId");
+
+                    b.Navigation("TroopDetails");
+
+                    b.Navigation("TroopLeader");
+
+                    b.Navigation("TroopMem");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeader", b =>
                 {
                     b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.ApplicationUser", "ApplicationUser")
                         .WithMany()
-                        .HasForeignKey("Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ApplicationUserId")
+                        .HasConstraintName("FK_TroopLeaders_AspNetUsers");
 
-                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.RegisteredTroopLeader", "RegisteredTroopLeader")
-                        .WithMany()
-                        .HasForeignKey("LeaderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("IA_AbansiBabayiSystemBlazor.Data.Models.LeaderPosition", "LeaderPosition")
+                        .WithMany("TroopLeaders")
+                        .HasForeignKey("LeaderPositionId")
+                        .HasConstraintName("FK_TroopLeaders_LeaderPosition");
 
                     b.Navigation("ApplicationUser");
 
-                    b.Navigation("RegisteredTroopLeader");
+                    b.Navigation("LeaderPosition");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -648,6 +825,43 @@ namespace IA_AbansiBabayiSystemBlazor.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.AccountStatus", b =>
+                {
+                    b.Navigation("AspNetUsers");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.LeaderPosition", b =>
+                {
+                    b.Navigation("TroopLeaders");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.Product", b =>
+                {
+                    b.Navigation("ProductPurchases");
+
+                    b.Navigation("ProductSales");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.ProductCategory", b =>
+                {
+                    b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopDetail", b =>
+                {
+                    b.Navigation("TroopInformations");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopLeader", b =>
+                {
+                    b.Navigation("TroopInformations");
+                });
+
+            modelBuilder.Entity("IA_AbansiBabayiSystemBlazor.Data.Models.TroopMember", b =>
+                {
+                    b.Navigation("TroopInformations");
                 });
 #pragma warning restore 612, 618
         }

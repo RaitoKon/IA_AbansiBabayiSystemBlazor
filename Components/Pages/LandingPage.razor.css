@@ -67,8 +67,10 @@
 .nav-link:focus,
 .sign-in-btn:hover,
 .sign-in-btn:focus {
-    color: white;
+    font-size: 0.9rem;
+    transition: font-size 0.4s ease;
 }
+
 
 .nav-link {
     display: inline-flex; /* Ensures alignment */
@@ -353,7 +355,7 @@ h1 {
     display: flex;
     grid-template-columns: repeat(4, 1fr);
     justify-content: center;
-    gap: 0.5rem;
+    gap: 1rem;
     position: relative; /* Add position relative to make z-index work */
     z-index: 1;
     margin-inline: 0.5em;
@@ -365,6 +367,7 @@ h1 {
     padding: 1.87em;
     margin: 0;
     box-shadow: -4px 4px 9.4px rgba(0, 0, 0, 38%);
+    border-radius: 1rem;
 }
 
     .program-card.camps {
@@ -714,20 +717,26 @@ h1 {
     min-width: 160px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     z-index: 1;
+    border-radius: 1rem;
+    background-color: white;
 }
 
     .badgedropdown-content a {
         color: #006400;
         padding: 12px 16px;
         text-decoration: none;
-        display: block;
+        display: block      
     }
 
         .badgedropdown-content a:hover {
-            background-color: #f1f1f1;
+            background-color: lightgray;
+            border-radius: 0.5rem;
         }
 
 .badgedropdown:hover .badgedropdown-content {
-    display: block;
+    display: flex;
+    padding: 1rem;
+    flex-direction: column;
+    gap:1rem;
 }
 

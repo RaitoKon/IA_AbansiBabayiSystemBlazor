@@ -1,15 +1,20 @@
 ﻿@using IA_AbansiBabayiSystemBlazor.Components.Themes
 @using IA_AbansiBabayiSystemBlazor.Data.Models
 @using Microsoft.AspNetCore.SignalR.Client
+@using IA_AbansiBabayiSystemBlazor.Services
 
-@page "/"
 @page "/scoutEventsAndAnnouncementPage"
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject TableDataService<AddEvent> EventService
+@inject TableDataService<AddEventsOrAnnouncement> AddEventsOrAnnouncementService
+@inject TableDataService<EventsOrAnnouncementsTarget> EventsOrAnnouncementsTargetService
+@inject TableDataService<TroopMemberScoutLevel> TroopMemberScoutLevelService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
+@inject ILogger<ScoutEventsAndAnnouncementPage> Logger
 
+@inject AuthenticatorService AuthenticatorService
+@attribute [Authorize(Roles = "Scout")]
 @layout Layout.BlankLayout
 
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
@@ -41,7 +46,7 @@
                             </MudAvatar>
                         </ActivatorContent>
                         <ChildContent>
-                            <MudMenuItem Label="Profile" />
+                            <MudMenuItem Href="/userProfilePage" Label="Profile" />
                             <MudDivider />
                             <MudMenuItem OnClick="LogoutAsync" Label="Logout" />
                         </ChildContent>
@@ -52,74 +57,142 @@
     </section>
 
     <section class="paper-margin">
-        <MudTabs Elevation="0" ApplyEffectsToContainer="true">
+        <MudTabs Elevation="0">
 
-            <MudTabPanel Text="ALL">
+            <MudTabPanel Text="All">
+
                 <MudPaper Class="pa-6 my-4" Elevation="2"
-                         Style="    justify-items: center;
+                          Style="   justify-items: center;
                                     width: 100%;
                                     padding-inline: 3rem;
                                     padding-block: 2rem;
                                     min-height: 40rem;
-                                    border-radius: 2rem;
+                                    border-radius: 0.5rem;
                                     border: 1px solid #FFF;
                                     background: linear-gradient(96deg, rgba(255, 255, 255, 1) -60.67%, rgba(255, 255, 255, 0.1) 50.46%);
                                     background-blend-mode: exclusion, normal;
                                     box-sizing: border-box;">
 
-                    <MudText Typo="Typo.h5" Class="mb-4" Align="Align.Center">Ongoing Events & Announcements</MudText>
+                    <MudText Typo="Typo.h5" Class="mb-4" Align="Align.Center">All Events & Announcements</MudText>
                     <MudDivider Style=" height: 0.2rem; background-color: white; width: 90%; align-self: center;" />
 
-                    @if (EventService.Data != null && EventService.Data.Any())
+                    @if (AllItems.Any())
                     {
                         <MudGrid Style="width: 100%; margin: 0;">
-                            @foreach (var e in EventService.Data.OrderBy(e => e.EventDate ?? DateTime.MaxValue))
+                            @foreach (var e in AllItems)
                             {
-
-                                <MudCard Style="margin: 2rem; height: 15rem; width: 100%; border-radius: 1rem;">
-                                    <div style="display:flex; height: 100%">
-                                        <MudCardContent Style="display: flex; padding: 0.5rem;">
-                                            <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; min-width: 15rem; align-items: center; justify-content: center; text-align: center; border-radius: 1rem;">
-                                                @if (e.EventDate.HasValue)
+                                <MudItem xs="12" Style="padding: 1rem;">
+                                    <MudCard Style="width: 100%;">
+                                        <div style="display:flex; height: 100%">
+                                            <MudCardContent Style="display: flex; padding: 0.5rem; width: 100%;">
+                                                @if (e.EventOrAnnouncementType == "Event") // Show date paper only for events
                                                 {
-                                                    <div>
-                                                        <p style="font-family: Lavish , sans-serif; font-size: 1rem; ">@e.EventDate.Value.ToString("MMMM")</p>
-
-                                                        <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventDate.Value.ToString("dd").ToUpper()</p>
-                                                    </div>
+                                                    <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; width: 15rem; align-items: center; justify-content: center; text-align: center;">
+                                                        @if (e.EventsOrAnnouncementsDateFrom.HasValue)
+                                                        {
+                                                            <div>
+                                                                <p style="font-family: Lavish, sans-serif; font-size: 1.5rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("MMMM")</p>
+                                                                @if (@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd") == @e.EventsOrAnnouncementsDateTo.Value.ToString("dd"))
+                                                                {
+                                                                    <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper()</p>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper() - @e.EventsOrAnnouncementsDateTo?.ToString("dd").ToUpper()</p>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <p>No date set</p>
+                                                        }
+                                                    </MudPaper>
                                                 }
-                                                else
-                                                {
-                                                    <p>No date set</p>
-                                                }
-                                            </MudPaper>
-                                            <div style="display: flex; flex-direction:column; justify-content: space-between;">
-                                                <div>
-                                                    <MudText Style="margin-left: 1rem; font-size: 3rem;">
-                                                        @e.EventTitle
-                                                    </MudText>
+                                                <div style="display: flex; flex-direction:column; justify-content: space-between; flex: 1;">
+                                                    <MudItem>
+                                                        <MudItem Class="pb-4">
+                                                            <MudText Typo="Typo.h5" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsTitle
+                                                            </MudText>
+                                                            <MudText Typo="Typo.body2" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsDescription
+                                                            </MudText>
+                                                        </MudItem>
+                                                        <MudDivider Style="margin-left: 0.5rem;" />
+                                                        @if (e.EventOrAnnouncementType == "Event") // Show location and date range only for events
+                                                        {
+                                                            <MudItem Class="d-flex align-center ma-2 ml-3">
+                                                                <MudIcon Class="mr-2" Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                                                                <MudText Typo="Typo.caption">
+                                                                    @e.EventsOrAnnouncementsLocation
+                                                                </MudText>
+                                                            </MudItem>
+                                                            <MudItem Class="d-flex align-center ma-2 ml-3">
+                                                                <MudIcon Class="mr-2" Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" />
+                                                                <MudText Typo="Typo.caption">
+                                                                    @if (e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy") == e.EventsOrAnnouncementsDateTo?.ToString("MMMM dd, yyyy"))
+                                                                    {
+                                                                        @e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy")
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @($"{e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy")} - {e.EventsOrAnnouncementsDateTo?.ToString("MMMM dd, yyyy")}")
+                                                                    }
+                                                                </MudText>
+                                                            </MudItem>
+                                                        }
+                                                        <MudText Typo="Typo.body2" Style="margin-left: 1rem;"><strong>@(e.EventOrAnnouncementType == "Event" ? "Attendees" : "Target Group")</strong></MudText>
 
-                                                    <MudText Style="margin-left: 1rem; font-size: 1rem;">
-                                                        @e.EventDescription
-                                                    </MudText>
-                                                    <br />
-                                                    <MudDivider Style="margin-left: 0.5rem;" />
-                                                    <br />
-                                                    <div style="display: flex; margin-left: 1rem; justify-items: center;">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" Class="mr-1" />
-                                                        <MudText Style="margin-left: 0.5rem; margin-top: 0.3rem; font-size: 1rem;">
-                                                            @e.EventLocation
-                                                        </MudText>
-                                                    </div>
+                                                        @if (EventsOrAnnouncementsTargetService.Data != null)
+                                                        {
+                                                            var attendees = EventsOrAnnouncementsTargetService.Data
+                                                            .Where(a => a.EventsOrAnnouncementsId == e.EventsOrAnnouncementsId)
+                                                            .OrderBy(a => GetScoutLevelOrder(a.TargetPeople)) // Custom sorting
+                                                            .ToList();
+
+                                                            if (attendees.Any())
+                                                            {
+                                                                <MudItem Class="d-flex flex-wrap ml-4 mt-1">
+                                                                    @foreach (var attendee in attendees)
+                                                                    {
+                                                                        var chipStyle = GetChipStyle(attendee.TargetPeople);
+                                                                        <MudChip Icon="@Icons.Material.Filled.Person" T="string" Size="Size.Small" Style="@chipStyle" Class="ma-1">
+                                                                            @attendee.TargetPeople
+                                                                        </MudChip>
+                                                                    }
+                                                                </MudItem>
+                                                            }
+                                                            else
+                                                            {
+                                                                <MudText Typo="Typo.caption" Class="ml-4">@(e.EventOrAnnouncementType == "Event" ? "Attendees Not Specified" : "Target Group Not Specified")</MudText>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudText Typo="Typo.caption" Class="ml-4">Loading attendees...</MudText>
+                                                        }
+                                                    </MudItem>
+                                                    <MudCardActions>
+                                                        <MudText Typo="Typo.caption" Class="ml-3">Date Posted: @e.DatePosted.Value.ToString("MMMM dd, yyyy")</MudText>
+                                                    </MudCardActions>
                                                 </div>
-                                            </div>
-                                        </MudCardContent>
-                                        <MudCardMedia Image="@e.EventImagePath" Style="height: 100%; width: 35%;" />
-                                    </div>
-                                </MudCard>
 
+                                                @if (!string.IsNullOrEmpty(e.EventsOrAnnouncementsImagePath))
+                                                {
+                                                    <MudCardMedia Image="@e.EventsOrAnnouncementsImagePath" Style="height: 100%; width: 40%;" />
+                                                }
+                                            </MudCardContent>
+                                        </div>
+                                    </MudCard>
+                                </MudItem>
                             }
                         </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="text-center ma-4">
+                            No events or announcements found.
+                        </MudText>
                     }
 
                 </MudPaper>
@@ -131,8 +204,8 @@
                                     width: 100%;
                                     padding-inline: 3rem;
                                     padding-block: 2rem;
-                                    height: 40rem;
-                                    border-radius: 2rem;
+                                    min-height: 40rem;
+                                    border-radius: 0.5rem;
                                     border: 1px solid #FFF;
                                     background: linear-gradient(96deg, rgba(255, 255, 255, 1) -60.67%, rgba(255, 255, 255, 0.1) 50.46%);
                                     background-blend-mode: exclusion, normal;
@@ -140,6 +213,80 @@
 
                     <MudText Typo="Typo.h5" Class="mb-4" Align="Align.Center">Announcements</MudText>
                     <MudDivider Style="height: 0.2rem; background-color: white; width: 90%; align-self: center;" />
+
+                    @if (FilteredAnnouncements.Any())
+                    {
+                        <MudGrid Style="width: 100%; margin: 0;">
+                            @foreach (var e in FilteredAnnouncements)
+                            {
+                                <MudItem xs="12" Style="padding: 1rem;">
+                                    <MudCard Style="width: 100%;">
+                                        <div style="display:flex; height: 100%">
+                                            <MudCardContent Style="display: flex; padding: 0.5rem; width: 100%;">
+                                                <div style="display: flex; flex-direction:column; justify-content: space-between; flex: 1;">
+                                                    <MudItem>
+                                                        <MudItem Class="pb-4">
+                                                            <MudText Typo="Typo.h5" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsTitle
+                                                            </MudText>
+                                                            <MudText Typo="Typo.body2" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsDescription
+                                                            </MudText>
+                                                        </MudItem>
+                                                        <MudDivider Style="margin-left: 0.5rem;" />
+                                                        <MudText Typo="Typo.body2" Style="margin-left: 1rem;"><strong>Target Group:</strong></MudText>
+
+                                                        @if (EventsOrAnnouncementsTargetService.Data != null)
+                                                        {
+                                                            var attendees = EventsOrAnnouncementsTargetService.Data
+                                                            .Where(a => a.EventsOrAnnouncementsId == e.EventsOrAnnouncementsId)
+                                                            .OrderBy(a => GetScoutLevelOrder(a.TargetPeople)) // Custom sorting
+                                                            .ToList();
+
+                                                            if (attendees.Any())
+                                                            {
+                                                                <MudItem Class="d-flex flex-wrap ml-4 mt-1">
+                                                                    @foreach (var attendee in attendees)
+                                                                    {
+                                                                        var chipStyle = GetChipStyle(attendee.TargetPeople);
+                                                                        <MudChip Icon="@Icons.Material.Filled.Person" T="string" Size="Size.Small" Style="@chipStyle" Class="ma-1">
+                                                                            @attendee.TargetPeople
+                                                                        </MudChip>
+                                                                    }
+                                                                </MudItem>
+                                                            }
+                                                            else
+                                                            {
+                                                                <MudText Typo="Typo.caption" Class="ml-4">Target Group Not Specified</MudText>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudText Typo="Typo.caption" Class="ml-4">Loading Target Group...</MudText>
+                                                        }
+                                                    </MudItem>
+                                                    <MudCardActions>
+                                                        <MudText Typo="Typo.caption" Class="ml-3">Date Posted: @e.DatePosted.Value.ToString("MMMM dd, yyyy")</MudText>
+                                                    </MudCardActions>
+                                                </div>
+
+                                                @if (!string.IsNullOrEmpty(e.EventsOrAnnouncementsImagePath))
+                                                {
+                                                    <MudCardMedia Image="@e.EventsOrAnnouncementsImagePath" Style="height: 100%; width: 40%;" />
+                                                }
+                                            </MudCardContent>
+                                        </div>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="text-center ma-4">
+                            No announcements found.
+                        </MudText>
+                    }
 
                 </MudPaper>
             </MudTabPanel>
@@ -151,65 +298,127 @@
                                     padding-inline: 3rem;
                                     padding-block: 2rem;
                                     min-height: 40rem;
-                                    border-radius: 2rem;
+                                    border-radius: 0.5rem;
                                     border: 1px solid #FFF;
                                     background: linear-gradient(96deg, rgba(255, 255, 255, 1) -60.67%, rgba(255, 255, 255, 0.1) 50.46%);
                                     background-blend-mode: exclusion, normal;
                                     box-sizing: border-box;">
 
-                    <MudText Typo="Typo.h5" Class="mb-4" Align="Align.Center">Ongoing Events & Announcements</MudText>
+                    <MudText Typo="Typo.h5" Class="mb-4" Align="Align.Center">Events</MudText>
                     <MudDivider Style=" height: 0.2rem; background-color: white; width: 90%; align-self: center;" />
 
-                    @if (EventService.Data != null && EventService.Data.Any())
+                    @if (FilteredEvents.Any())
                     {
                         <MudGrid Style="width: 100%; margin: 0;">
-                            @foreach (var e in EventService.Data.OrderBy(e => e.EventDate ?? DateTime.MaxValue))
+                            @foreach (var e in FilteredEvents)
                             {
+                                <MudItem xs="12" Style="padding: 1rem;">
+                                    <MudCard Style="width: 100%;">
+                                        <div style="display:flex; height: 100%">
+                                            <MudCardContent Style="display: flex; padding: 0.5rem; width: 100%;">
+                                                <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; width: 15rem; align-items: center; justify-content: center; text-align: center;">
+                                                    @if (e.EventsOrAnnouncementsDateFrom.HasValue)
+                                                    {
+                                                        <div>
+                                                            <p style="font-family: Lavish, sans-serif; font-size: 1.5rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("MMMM")</p>
+                                                            @if (@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd") == @e.EventsOrAnnouncementsDateTo.Value.ToString("dd"))
+                                                            {
+                                                                <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper()</p>
+                                                            }
+                                                            else
+                                                            {
+                                                                <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper() - @e.EventsOrAnnouncementsDateTo?.ToString("dd").ToUpper()</p>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p>No date set</p>
+                                                    }
+                                                </MudPaper>
+                                                <div style="display: flex; flex-direction:column; justify-content: space-between; flex: 1;">
+                                                    <MudItem>
+                                                        <MudItem Class="pb-4">
+                                                            <MudText Typo="Typo.h5" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsTitle
+                                                            </MudText>
+                                                            <MudText Typo="Typo.body2" Style="margin-left: 1rem;">
+                                                                @e.EventsOrAnnouncementsDescription
+                                                            </MudText>
+                                                        </MudItem>
+                                                        <MudDivider Style="margin-left: 0.5rem;" />
+                                                        <MudItem Class="d-flex align-center ma-2 ml-3">
+                                                            <MudIcon Class="mr-2" Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                                                            <MudText Typo="Typo.caption">
+                                                                @e.EventsOrAnnouncementsLocation
+                                                            </MudText>
+                                                        </MudItem>
+                                                        <MudItem Class="d-flex align-center ma-2 ml-3">
+                                                            <MudIcon Class="mr-2" Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" />
+                                                            <MudText Typo="Typo.caption">
+                                                                @if (e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy") == e.EventsOrAnnouncementsDateTo?.ToString("MMMM dd, yyyy"))
+                                                                {
+                                                                    @e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy")
+                                                                }
+                                                                else
+                                                                {
+                                                                    @($"{e.EventsOrAnnouncementsDateFrom?.ToString("MMMM dd, yyyy")} - {e.EventsOrAnnouncementsDateTo?.ToString("MMMM dd, yyyy")}")
+                                                                }
+                                                            </MudText>
+                                                        </MudItem>                    
 
-                                <MudCard Style="margin: 2rem; height: 15rem; width: 100%; border-radius: 1rem;">
-                                    <div style="display:flex; height: 100%">
-                                        <MudCardContent Style="display: flex; padding: 0.5rem;">
-                                            <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; min-width: 15rem; align-items: center; justify-content: center; text-align: center; border-radius: 1rem;">
-                                                @if (e.EventDate.HasValue)
-                                                {
-                                                    <div>
-                                                        <p style="font-family: Lavish , sans-serif; font-size: 1rem; ">@e.EventDate.Value.ToString("MMMM")</p>
+                                                            <MudText Typo="Typo.body2" Style="margin-left: 1rem;"><strong>Attendees</strong></MudText>                                                     
+                                                       
+                                                        @if (EventsOrAnnouncementsTargetService.Data != null)
+                                                        {
+                                                            var attendees = EventsOrAnnouncementsTargetService.Data
+                                                            .Where(a => a.EventsOrAnnouncementsId == e.EventsOrAnnouncementsId)
+                                                            .OrderBy(a => GetScoutLevelOrder(a.TargetPeople)) // Custom sorting
+                                                            .ToList();
 
-                                                        <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventDate.Value.ToString("dd").ToUpper()</p>
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    <p>No date set</p>
-                                                }
-                                            </MudPaper>
-                                            <div style="display: flex; flex-direction:column; justify-content: space-between;">
-                                                <div>
-                                                    <MudText Style="margin-left: 1rem; font-size: 3rem;">
-                                                        @e.EventTitle
-                                                    </MudText>
-
-                                                    <MudText Style="margin-left: 1rem; font-size: 1rem;">
-                                                        @e.EventDescription
-                                                    </MudText>
-                                                    <br />
-                                                    <MudDivider Style="margin-left: 0.5rem;" />
-                                                    <br />
-                                                    <div style="display: flex; margin-left: 1rem; justify-items: center;">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" Class="mr-1" />
-                                                        <MudText Style="margin-left: 0.5rem; margin-top: 0.3rem; font-size: 1rem;">
-                                                            @e.EventLocation
-                                                        </MudText>
-                                                    </div>
+                                                            if (attendees.Any())
+                                                            {
+                                                                <MudItem Class="d-flex flex-wrap ml-4 mt-1">
+                                                                    @foreach (var attendee in attendees)
+                                                                    {
+                                                                        var chipStyle = GetChipStyle(attendee.TargetPeople);
+                                                                        <MudChip Icon="@Icons.Material.Filled.Person" T="string" Size="Size.Small" Style="@chipStyle" Class="ma-1">
+                                                                            @attendee.TargetPeople
+                                                                        </MudChip>
+                                                                    }
+                                                                </MudItem>
+                                                            }
+                                                            else
+                                                            {
+                                                                <MudText Typo="Typo.caption" Class="ml-4">Attendees Not Specified</MudText>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudText Typo="Typo.caption" Class="ml-4">Loading attendees...</MudText>
+                                                        }
+                                                    </MudItem>
+                                                    <MudCardActions>
+                                                        <MudText Typo="Typo.caption" Class="ml-3">Date Posted: @e.DatePosted.Value.ToString("MMMM dd, yyyy")</MudText>
+                                                    </MudCardActions>
                                                 </div>
-                                            </div>
-                                        </MudCardContent>
-                                        <MudCardMedia Image="@e.EventImagePath" Style="height: 100%; width: 35%;" />
-                                    </div>
-                                </MudCard>
 
+                                                @if (!string.IsNullOrEmpty(e.EventsOrAnnouncementsImagePath))
+                                                {
+                                                    <MudCardMedia Image="@e.EventsOrAnnouncementsImagePath" Style="height: 100%; width: 40%;" />
+                                                }
+                                            </MudCardContent>
+                                        </div>
+                                    </MudCard>
+                                </MudItem>
                             }
                         </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="text-center ma-4">
+                            No events found.
+                        </MudText>
                     }
 
                 </MudPaper>
@@ -218,25 +427,37 @@
     </section>
 </div>
 
-@code{
+@code {
     private HubConnection? _hubConnection;
+    private ApplicationUser currentUser;
     private int? expandedEventId = null;
     private int _index;
     private bool _completed;
+    private string errorMessage;
+
+    private List<AddEventsOrAnnouncement> FilteredEvents =>
+       AddEventsOrAnnouncementService.Data?
+           .Where(e => e.EventOrAnnouncementType == "Event")
+           .OrderByDescending(e => e.DatePosted)
+           .ToList() ?? new List<AddEventsOrAnnouncement>();
+
+    private List<AddEventsOrAnnouncement> FilteredAnnouncements =>
+        AddEventsOrAnnouncementService.Data?
+            .Where(e => e.EventOrAnnouncementType == "Announcement")
+            .OrderByDescending(e => e.DatePosted)
+            .ToList() ?? new List<AddEventsOrAnnouncement>();
+
+    private List<AddEventsOrAnnouncement> AllItems =>
+        AddEventsOrAnnouncementService.Data?
+            .OrderByDescending(e => e.DatePosted)
+            .ToList() ?? new List<AddEventsOrAnnouncement>();
 
     protected override async Task OnInitializedAsync()
     {
-        // Authorization
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
 
-        // Redirect to NotFound if role doesn't match (extra safety)
-        if (!user.IsInRole("Admin") && !user.IsInRole("Troop Leader") && !user.IsInRole("Scout"))
-        {
-            NavigationManager.NavigateTo("/landingPage", forceLoad: true);
-        }
+        await AddEventsOrAnnouncementService.LoadDataAsync();
+        await EventsOrAnnouncementsTargetService.LoadDataAsync();
 
-        await EventService.LoadDataAsync();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
@@ -245,27 +466,42 @@
 
         _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
         {
-            if (tableName == nameof(AddEvent))
+            if (tableName == nameof(AddEventsOrAnnouncement) || tableName == nameof(EventsOrAnnouncementsTarget))
             {
-                await EventService.LoadDataAsync();
+                await AddEventsOrAnnouncementService.LoadDataAsync();
+                await EventsOrAnnouncementsTargetService.LoadDataAsync();
                 await InvokeAsync(StateHasChanged);
             }
         });
 
         await _hubConnection.StartAsync();
+    
     }
 
-    private void EventRegisterButtonClicked()
+    private int GetScoutLevelOrder(string scoutLevel)
     {
-        
+        return scoutLevel?.ToLower() switch
+        {
+            "twinklers" => 1,
+            "star" => 2,
+            "junior" => 3,
+            "senior" => 4,
+            "cadet" => 5,
+            _ => 6
+        };
     }
 
-    void ToggleExpanded(int eventId)
+    private string GetChipStyle(string scoutLevelName)
     {
-        if (expandedEventId == eventId)
-            expandedEventId = null; // collapse if same event clicked
-        else
-            expandedEventId = eventId; // expand this one
+        return scoutLevelName?.ToLower() switch
+        {
+            "twinklers" => "background-color: #f467a4; color: #ffffff;", // Pink
+            "star" => "background-color: #eed300; color: #ffffff;", // Yellow
+            "junior" => "background-color: #fdbd23; color: #ffffff;", // Orange
+            "senior" => "background-color: #ff8546; color: #ffffff;", // Coral
+            "cadet" => "background-color: #a821e5; color: #ffffff;", // Purple
+            _ => "background-color: #e0e0e0; color: #000000;" // Default gray
+        };
     }
 
     private async Task LogoutAsync()

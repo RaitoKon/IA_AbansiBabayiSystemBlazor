@@ -1,0 +1,47 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="newTroop.TroopNo"
+                      Label="Troop Number"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Margin="Margin.Dense" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AddTroop">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private TroopInformation newTroop = new();
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void AddTroop()
+    {
+        if (newTroop.TroopNo == null)
+        {
+            Snackbar.Add("Please enter a troop number.", Severity.Error);
+            return;
+        }
+
+        // Example validation: Check for duplicates
+        if (TroopInformationService.Data.Any(t => t.TroopNo == newTroop.TroopNo))
+        {
+            Snackbar.Add($"Error: Troop Number {newTroop.TroopNo} already exists.", Severity.Error);
+            return;
+        }
+
+        // ✅ If all validations pass, close the dialog and return data
+        MudDialog.Close(DialogResult.Ok(newTroop));
+    }
+}

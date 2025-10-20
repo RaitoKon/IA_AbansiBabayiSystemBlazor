@@ -1,0 +1,52 @@
+﻿@using MudBlazor
+@inject ISnackbar Snackbar
+
+<MudDialog >
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1">
+            @((MarkupString)Content)
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   OnClick="Confirm" StartIcon="@Icons.Material.Filled.Delete">Confirm</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string Content { get; set; }
+    [Parameter] public bool IsSingle { get; set; }
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+
+    private string Title => IsSingle ? "Confirm Archive" : "Confirm Multiple Archive";
+
+    private async Task Confirm()
+    {
+        try
+        {
+            if (OnConfirmed.HasDelegate)
+            {
+                await OnConfirmed.InvokeAsync();
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

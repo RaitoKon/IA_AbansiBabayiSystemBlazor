@@ -1,21 +1,25 @@
 ﻿
 @using IA_AbansiBabayiSystemBlazor.Data.Models;
 @using IA_AbansiBabayiSystemBlazor.Data;
+@using IA_AbansiBabayiSystemBlazor.Services;
 @using Microsoft.AspNetCore.Identity;
 @using Microsoft.AspNetCore.Authorization;
 @using Microsoft.EntityFrameworkCore
 
 @inject NavigationManager NavigationManager
-@inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject TableDataService<TroopMemberAccount> TroopMemberAccountService
-@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopLeader> TroopLeaderService
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext GetTroopMemberData
 @inject SignInManager<ApplicationUser> SignInManager
 @inject HttpClient Http
+@inject AuthenticatorService AuthenticatorService
+@inject IJSRuntime JS
+@inject ILogger<UserPage> Logger
 
 @page "/userPage"
+@attribute [Authorize(Roles = "Admin, Troop Leader, Scout")]
 @layout Layout.BlankLayout
 
 <MudThemeProvider />
@@ -36,8 +40,11 @@
                 </div>
                 <p>@currentUserFname</p>
                 <div class="nav-right">
-                    <AuthorizeView Roles="Admin, Troop Leader">
-                    <a href="/managementPage" class="nav-link">MANAGEMENT</a>
+                    <AuthorizeView Roles="Admin">
+                    <a href="/managementPage" class="nav-link">ADMIN<br /> MANAGEMENT</a>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Troop Leader">
+                        <a href="/scoutRegistrationRequestsPage" class="nav-link">TROOP LEADER<br/> MANAGEMENT</a>
                     </AuthorizeView>
                     <AuthorizeView Roles="Scout">
                         <a href="/scoutEventsAndAnnouncementPage" class="nav-link">EVENTS AND <br /> ANNOUNCEMENTS</a>
@@ -49,7 +56,7 @@
                             </MudAvatar>
                         </ActivatorContent>
                         <ChildContent>
-                            <MudMenuItem Label="Profile" />
+                            <MudMenuItem Href="/userProfilePage" Label="Profile" />
                             <MudDivider />
                             <MudMenuItem OnClick="LogoutAsync" Label="Logout" />
                         </ChildContent>
@@ -170,10 +177,7 @@
 
 
 
-
-
-    @code {
-
+@code {
     private ApplicationUser currentUser;
     private string currentUserFname;
     private string currentLeaderRole;
@@ -183,62 +187,59 @@
 
     protected override async Task OnInitializedAsync()
     {
-
         isLoading = true;
 
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            // Use the service instead of writing the same code
+            currentUser = await AuthenticatorService.GetCurrentUserAsync();
 
-            if (!user.IsInRole("Admin") && !user.IsInRole("Troop Leader") && !user.IsInRole("Scout"))
+            if (currentUser == null)
             {
-                NavigationManager.NavigateTo("/landingPage", forceLoad: true);
+                NavigationManager.NavigateTo("/");
+                return;
             }
 
-
-            if (user.Identity?.IsAuthenticated ?? false)
+            // Check if password reset is needed
+            if (currentUser.MustChangePassword)
             {
-                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                currentUser = await UserManager.FindByIdAsync(userId);
+                NavigationManager.NavigateTo("/forceResetPasswordPage", true);
+                return;
+            }
 
-                if (currentUser != null)
-                {
-                    await TroopLeaderAccountService.LoadDataAsync();
-                    await TroopMemberAccountService.LoadDataAsync();
-                    // Fetch troop leader name from related data
-                    var troopLeaderAccount = TroopLeaderAccountService.Data
-                        .FirstOrDefault(a => a.Id == userId);
-                    var troopMemberAccount = TroopMemberAccountService.Data
-                        .FirstOrDefault(a => a.Id == userId);
+            // LOAD THE DATA FIRST before querying
+            await TroopLeaderService.LoadDataAsync();
+            await TroopMemberService.LoadDataAsync();
 
+            // Now query the loaded data
+            var troopLeaderAccount = TroopLeaderService.Data?
+                .FirstOrDefault(t => t.ApplicationUserId == currentUser.Id);
 
-                    if (troopLeaderAccount != null)
-                    {
-                        var troopInfo = GetTroopMemberData.RegisteredTroopLeaders
-                            .FirstOrDefault(l => l.LeaderId == troopLeaderAccount.LeaderId);
+            var troopMemberAccount = TroopMemberService.Data?
+                .FirstOrDefault(t => t.ApplicationUserId == currentUser.Id);
 
-                        currentUserFname = troopInfo?.LeaderFname;
-                        currentLeaderRole = troopInfo.LeaderRole;
-                    }
-                    else if (troopMemberAccount != null)
-                    {
-                        var troopInfo = await GetTroopMemberData.RegisteredTroopMembers
-                            .FirstOrDefaultAsync(l => l.TroopMemId == troopMemberAccount.TroopMemId);
+            if (troopLeaderAccount != null)
+            {
+                currentUserFname = troopLeaderAccount.LeaderFname;
 
-                        currentUserFname = troopInfo?.TroopMemFname;
-                        currentTroopMemRole = troopInfo.TroopMemRole;
-                    }
-                }
+            }
+            else if (troopMemberAccount != null)
+            {
+
+                currentUserFname = troopMemberAccount.TroopMemFname;
+
             }
             else
             {
-                errorMessage = "User is not authenticated.";
+                NavigationManager.NavigateTo("/");
+                errorMessage = "User profile not found in troop data, but you can still reset your password.";
             }
+
         }
         catch (Exception ex)
         {
-            errorMessage = $"Something went wrong: {ex.Message}";
+            errorMessage = $"Error loading user data: {ex.Message}";
+            Logger.LogError(ex, "Error in UserPage.OnInitializedAsync");
         }
         finally
         {
@@ -252,7 +253,7 @@
         await JS.InvokeVoidAsync("eval", @"
         fetch('/auth/logout', {
             method: 'POST',
-            credentials: 'include' // send auth cookie
+            credentials: 'include'
         }).then(() => {
             window.location.href = '/landingPage';
         });

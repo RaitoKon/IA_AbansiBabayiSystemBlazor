@@ -1,17 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Components;
+﻿using IA_AbansiBabayiSystemBlazor.Data;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
-using static System.Net.WebRequestMethods;
-using System.Net.Http;
-using System.Net.Http.Json;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using MudBlazor;
-using Azure;
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.JSInterop;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
+using MudBlazor;
+using System.ComponentModel.DataAnnotations;
 
 namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 {
@@ -19,6 +15,7 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
     {
         private LoginModel loginModel = new();
         private string errorMessage;
+        private bool isLoading = false;
 
         public class LoginModel
         {
@@ -29,9 +26,20 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             public string Password { get; set; }
         }
 
+        protected override void OnInitialized()
+        {
+            var uri = new Uri(Navigation.Uri);
+            var query = QueryHelpers.ParseQuery(uri.Query);
+
+            if (query.TryGetValue("error", out var error))
+            {
+                errorMessage = error;
+                ToggleLoginForm();
+            }
+        }
+
         private async Task HandleLoginAsync()
         {
-            // Optional: Basic client-side validation
             if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
             {
                 errorMessage = "Please fill in both fields.";
@@ -39,23 +47,42 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             }
 
             errorMessage = null;
+            isLoading = true;
+            StateHasChanged();
 
-
-            await JS.InvokeVoidAsync("submitLoginForm", loginModel.Email, loginModel.Password);
-        }
-
-        protected override void OnInitialized()
-        {
-            var uri = new Uri(NavigationManager.Uri);
-            var query = QueryHelpers.ParseQuery(uri.Query); // returns Dictionary<string, StringValues>
-
-            if (query.TryGetValue("error", out var error) && error == "invalid")
+            try
             {
-                errorMessage = "Invalid credentials.";
-                ToggleLoginForm();
+                await Task.Delay(1000);
+
+                var errorMessageFromJs = await JS.InvokeAsync<string>("submitLoginForm", loginModel.Email, loginModel.Password);
+
+                if (!string.IsNullOrEmpty(errorMessageFromJs))
+                {
+                    errorMessage = errorMessageFromJs;
+                    isLoading = false;
+                    StateHasChanged();
+                }
+                // If no error returned and no redirect happened, there might be an issue
+                else
+                {
+                    // Add a small delay to see if redirect happens
+                    await Task.Delay(1000);
+                    // If still here, show generic error
+                    errorMessage = "Login completed but no redirect occurred.";
+                    isLoading = false;
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Login error: {ex.Message}";
+                isLoading = false;
+                StateHasChanged();
+                Logger.LogError(ex, "Login error for {Email}", loginModel.Email);
             }
         }
 
+        // Your existing UI methods remain the same
         private bool showLoginForm = false;
         private bool showBodyEffect = false;
 
@@ -64,8 +91,12 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             showLoginForm = !showLoginForm;
             showBodyEffect = !showBodyEffect;
 
-            Console.WriteLine("TOGGLE LOGIN CLICKED");
-            Logger.LogWarning("TOGGLE LOGIN CLICKED");
+            // Reset form when opening/closing
+            if (showLoginForm)
+            {
+                loginModel = new LoginModel();
+                errorMessage = null;
+            }
         }
 
         private bool showDropDown = false;
@@ -76,69 +107,66 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
         }
 
         private string backgroundImage = "images/BG-Base.png";
-        private double imageOpacity = 1.0; // Fully visible
+        private double imageOpacity = 1.0;
 
         private async Task ChangeBackground(string newImage)
         {
-            imageOpacity = 0; // Start fade-out
-            await Task.Delay(200); // Wait for fade-out effect
-            backgroundImage = newImage; // Change the image source
-            imageOpacity = 1; // Fade-in the new image
+            imageOpacity = 0;
+            await Task.Delay(200);
+            backgroundImage = newImage;
+            imageOpacity = 1;
         }
 
         private void ResetBackground()
         {
             backgroundImage = "images/BG-Base.png";
-
         }
-
 
         private string currentCard = "login-card";
 
-        private void ShowScoutLevel()
+        private void ShowRegistrationChoices()
         {
-            currentCard = "selectScoutLevel-card";
+            currentCard = "registrationChoices-card";
         }
 
-        private string selectedScoutLevel = "";
-        private void SelectedScoutLevel(string level)
+        private string selectedRole = string.Empty;
+        private void SelectedRole(string role)
         {
-            if ( showLoginForm == false && showBodyEffect == false && selectedScoutLevel != null )
+            if (role == "Scout")
             {
-                ToggleLoginForm();
-                selectedScoutLevel = level;
-                currentCard = "selectStatus-card";
+                selectedRole = role;
+                currentCard = "selectScoutLevel-card";
             }
-            else {
-
-                selectedScoutLevel = level;
-                currentCard = "selectStatus-card";
+            else
+            {
+                selectedRole = role;
+                RegistrationStateService.SelectedRole = selectedRole;
+                Navigation.NavigateTo("/registrationPage");
             }
-            
         }
 
-        private string selectedStatus = "";
+        private int selectedScoutLevel;
 
-        private void SelectedStatus(string status)
+        private void SelectedScoutLevel(int status)
         {
-            selectedStatus = status;
+            selectedScoutLevel = status;
+            RegistrationStateService.SelectedRole = selectedRole;
+            RegistrationStateService.SelectedScoutLevel = selectedScoutLevel;
+            Navigation.NavigateTo("/registrationPage");
+        }
 
-            PassedDataRoute.ScoutLevel = selectedScoutLevel;
-            PassedDataRoute.Status = selectedStatus;
-
-            NavigationManager.NavigateTo("/registrationPage");
+        private void SelectedScoutLevelWithRole(int status)
+        {
+            selectedScoutLevel = status;
+            RegistrationStateService.SelectedRole = "Scout";
+            RegistrationStateService.SelectedScoutLevel = selectedScoutLevel;
+            Navigation.NavigateTo("/registrationPage");
         }
 
         private void CancelRegistration()
         {
             currentCard = "login-card";
-            selectedScoutLevel = "";
             ToggleLoginForm();
-        }
-
-        private void OpenRegistrationPage()
-        {
-            NavigationManager.NavigateTo("/landingPageUser");
         }
     }
 }

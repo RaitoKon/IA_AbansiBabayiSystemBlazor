@@ -4,13 +4,22 @@
 @using IA_AbansiBabayiSystemBlazor.Data
 @using Microsoft.EntityFrameworkCore
 @using IA_AbansiBabayiSystemBlazor.Components.Themes
+@using Microsoft.AspNetCore.Identity
 
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@inject PassedDataRoute PassedDataRoute
+@inject ILogger<RegistrationPage> Logger
+@inject RegistrationStateService RegistrationStateService
 @inject ApplicationDbContext AppDbContext
 @inject EmailService EmailService
-@inject TableDataService<RegisteredTroopLeader> RegisteredService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<LeaderPosition> LeaderPositionService
+@inject TableDataService<TroopMemberScoutLevel> ScoutLevelService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject UserManager<ApplicationUser> UserManagerService
+@inject SignInManager<ApplicationUser> SignInManager
+
 
 @page "/registrationPage"
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme"/>
@@ -40,314 +49,263 @@
         <div class="registration-placeholder">
             <div class="registration-placeholder-left">
                 <div class="registration-content">
-                    <form class="registration-form">
                         <div class="upper-registration-form">
                             <h1> Register to IGSC Website</h1>
-                            <p style="margin-block: 1rem;">Already have an account?<b>Sign in</b></p>
-
-                            <div class="registration-dropdown" @onclick="ToggleRegistrationDropdown">
-                                <p>@(string.IsNullOrEmpty(currentRole) ? "Role" : currentRole)</p>
-                                <input type="text" value="@currentRole" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
-                                <img src="icons/dropdown.svg" alt="Registration Dropdown Button" class="dropdown-button" />
-                            </div>
-
-                            <div class="registration-dropdown-toggle">
-                                <div class="registration-dropdown-menu @(toggleRegistrationDropdown ? "registration-dropdown-menu-on" : "") ">
-                                    <div class="registration-dropdown-choices">
-                                        <button type="button" class="scout-btn twinklers" @onclick="@(() => SelectedRole("Twinklers"))">Twinklers</button>
-                                        <button type="button" class="scout-btn star" @onclick="@(() => SelectedRole("Star"))">Star</button>
-                                        <button type="button" class="scout-btn junior" @onclick="@(() => SelectedRole("Junior"))">Junior</button>
-                                        <button type="button" class="scout-btn senior" @onclick="@(() => SelectedRole("Senior"))">Senior</button>
-                                        <button type="button" class="scout-btn cadet" @onclick="@(() => SelectedRole("Cadet"))">Cadet</button>
-                                        <button type="button" class="scout-btn troop-leader" @onclick="@(() => SelectedRole("Troop Leader"))">Troop Leader</button>
-                                    </div>
-                                </div>
+                        <p style="margin-block: 1rem;">Do you already have an account? <a href="/landingPage"><b>Sign in</b></a></p>
+                            <div class="custom-dropdown-1">
+                            <MudItem>
+                                <MudSelect Style="text-align:center;" T="string" @bind-Value="currentRole" Placeholder="Select Role" Variant="Variant.Text" Underline="false">
+                                    <MudSelectItem Value="@("Scout")">Scout</MudSelectItem>
+                                    <MudSelectItem Value="@("Troop Leader")">Troop Leader</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
                             </div>
                         </div>
-
-                        @if (currentRole == "Troop Leader")
+                        <div class="lower-registration-form">
+                        @if (currentRole == "Scout")
                         {
-                            <div class="input-grid">
-                                <!-- Full-width  -->
-                                <div class="grid-row1">
-                                    <div class="input-dropdown-toggle">
-                                        <div class="input-dropdown" @onclick="TogglePositionDropdown">
-                                            <div style="display: flex; flex-direction: column;">
-                                                <label for="position">Position</label>
-                                                <p>@(string.IsNullOrEmpty(currentPosition) ? "" : currentPosition)</p>
-                                            </div>
-                                                <img src="icons/dropdown.svg" alt="Position Dropdown Button" class="dropdown-button" />
-                                                                        @* CurrentPostition *@
-                                                <input type="text" value="@currentPosition" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
-
-                                        </div>
-
-                                        <div class="input-dropdown-menu @(togglePositionDropdown ? "input-dropdown-menu-on" : "") ">
-                                            <div class="input-dropdown-choices">
-                                                <button type="button" @onclick="@(() => SelectedPosition("Leader"))">Leader</button>
-                                                <button type="button" @onclick="@(() => SelectedPosition("Co - Leader"))">Co - leader</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="input-dropdown-toggle">
-                                        <div class="input-dropdown" @onclick="ToggleTorNTDropdown">
-                                            <div style="display: flex; flex-direction: column;">
-                                                <label for="teaching status">Teaching Status</label>
-                                                <p>@(string.IsNullOrEmpty(currentTorNT) ? "" : currentTorNT)</p>
-                                            </div>
-                                                <img src="icons/dropdown.svg" alt="TorNT Dropdown Button" class="dropdown-button" />
-											                            @* CurrentTorNT *@
-                                                <input type="text" value="@currentTorNT" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
-                                        </div>
-
-                                        <div class="input-dropdown-menu @(toggleTorNTDropdown ? "input-dropdown-menu-on" : "") ">
-                                            <div class="input-dropdown-choices">
-                                                <button type="button" @onclick="@(() => SelectedTorNT("Teaching"))">Teaching</button>
-                                                <button type="button" @onclick="@(() => SelectedTorNT("Non-Teaching"))">Non-Teaching</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    @if (currentPosition == "Co - Leader")
-                                    {
-                                        @* currentToopNumber *@
-                                        <div class="input-dropdown-toggle">
-                                            <div class="input-dropdown" @onclick="ToggleTroopLeaderDropdown">
-                                                <div style="display: flex; flex-direction: column;">
-                                                    <label for="troop leader number">Troop Leader</label>
-                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : currentTroopNumber + " -" + selectedLeaderName)</p>
-                                                </div>
-                                                <img src="icons/dropdown.svg" alt="Troop Dropdown Button" class="dropdown-button" />
-                                                <input type="text" value="@currentTroopNumber" hidden />
-                                            </div>
-
-                                            <div class="input-dropdown-menu @(toggleTroopLeaderDropdown ? "input-dropdown-menu-on" : "") scrollable-menu">
-                                                <div class="input-dropdown-choices">
-                                                    @foreach (var leader in troopLeaders)
-                                                    {
-                                                        <button type="button" class="scout-btn twinklers" @onclick="@(() => SelectTroopNumber(leader.LeaderId.ToString(), leader.FullName))">
-                                                            @leader.LeaderId - @leader.FullName
-                                                        </button>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-
-                                </div>
-
-                                <!-- Name row -->
-                                <div class="grid-row">
-                                    <div class="input-design">
-                                        <label for="first name">First Name</label>
-                                                                @* CurrentFname *@
-                                        <input type="text" @bind="currentFname" required />
-                                    </div>
-                                    <div class ="input-design">
-                                        <label for="middle name">Middle Initial</label>
-                                                                @* CurrentMInitial *@
-                                        <input type="text" @bind="currentMInitial" required />
-                                    </div>
-                                    <div class="input-design">
-                                        <label for="last name">Last Name</label>
-                                                            @* CurrentLname *@
-                                        <input type="text" @bind="currentLname" required />
-                                    </div>
-                                </div>
-
-                                <!-- Age & Birthdate -->
-                                <div class="grid-row">
-                                    <div class="input-design" style="z-index: 3">
-                                        <label for="birthdate">Birthdate</label>
-                                                             @* CurrentBirthdate *@
-                                        <MudDatePicker @bind-Date="currentBirthDate"
-                                                       PickerVariant="PickerVariant.Dialog"
-                                                       AutoClose="true"                                                       
-                                                       Underline="false"
-                                                       Color="Color.Primary"
-                                                       DateFormat="MM/dd/yyyy"
-                                                       OpenTo="OpenTo.Year"
-                                                       AdornmentColor="Color.Primary"/>
-                                                      
-                                    </div>
-
-                                    <div class="input-dropdown-toggle">
-                                        <div class="input-dropdown" @onclick="ToggleStatusDropdown">
-                                            <div style="display: flex; flex-direction: column;">
-                                                <label for="registration status">Registration Status</label>
-                                                    <p>@(string.IsNullOrEmpty(currentStatus) ? "" : currentStatus)</p>
-                                            </div>
-                                            <img src="icons/dropdown.svg" alt="Status Dropdown Button" class="dropdown-button" />
-                                                                    @* CurrentStatus *@
-                                            <input type="text" value="@currentStatus" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
-                                        </div>
-
-                                        <div class="input-dropdown-menu @(toggleStatusDropdown ? "input-dropdown-menu-on" : "") ">
-                                            <div class="input-dropdown-choices">
-                                                <button type="button" @onclick="@(() => SelectedStatus("Re - Register"))">Existing</button>
-                                                <button type="button" @onclick="@(() => SelectedStatus("New"))">New</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-
-                                <!-- Grade & Status -->
-                                <div class="grid-row">
-                                    <div class="input-design">
-                                        <label for="beneficiary">Beneficiary</label>
-                                                           @* currentBeneficiary *@
-                                        <div style="display: flex; justify-content: space-between">
-                                            <input style="width: 90%; height: 22.8px" type="text" @bind="currentBeneficiary" required />
-                                            <MudTooltip ShowOnHover="true" Text="Beneficiary: Person designated for emergencies or insurance claims." Arrow="true" Color="Color.Tertiary">
-                                                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Medium" Color="Color.Primary" />
-                                            </MudTooltip>
-                                        </div>
-                                    </div>
-                                    <div class="input-design">
-                                        <label for="email">Email</label>
-                                                            @* currentEmail *@
-                                    <input type="text" @bind="currentEmail" required/>
-                                    </div>
-
-                                </div>
-
-                            </div>
-                        }
-
-                        else
-                        {
-                                
-
-                            <div class="input-grid">
-                                <!-- Full-width Troop Number -->
-                                <div class="grid-row1">
-
-                                    @if(currentStatus == "Re-Register"){
-                                        <div class="grid-row">
-                                            <div class="input-design">
-                                                <label for="scout number">Scout Number</label>
-                                                                    @* currentScoutNumber *@
-                                                <input type="text" @bind="currentScoutNumber" required />
-                                            </div>
-                                        </div>
-                                    }
-                                                               @* currentToopNumber *@
-                                    <div class="input-dropdown-toggle">
-                                        <div class="input-dropdown" @onclick="ToggleTroopLeaderDropdown">
-                                            <div style="display: flex; flex-direction: column;">
-                                                <label for="troop leader number">Troop Leader</label>
-                                                    <p>@(string.IsNullOrEmpty(currentTroopNumber) ? "" : currentTroopNumber + " - " + selectedLeaderName)</p>
-                                            </div>
-                                            <img src="icons/dropdown.svg" alt="Troop Dropdown Button" class="dropdown-button" />
-                                            <input type="text" value="@currentTroopNumber" hidden />
-                                        </div>
-
-                                        <div class="input-dropdown-menu @(toggleTroopLeaderDropdown ? "input-dropdown-menu-on" : "") scrollable-menu">
-                                            <div class="input-dropdown-choices">
-                                                @foreach (var leader in troopLeaders)
+                            <MudGrid Spacing="2" Class="ma-0" Style="width:100%">
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-dropdown-2" style="background: @GetScoutLevelColor(troopmemberinfo.TroopMemScoutLevelId);">
+                                        <label>Scout Level</label>
+                                        <MudSelect InputClass="pa-0" T="int?" @bind-Value="troopmemberinfo.TroopMemScoutLevelId" Variant="Variant.Text" Underline="false">
+                                            @if (TroopMemberScoutLevel?.Any() == true)
+                                            {
+                                                @foreach (var scoutLevel in TroopMemberScoutLevel)
                                                 {
-                                                    <button type="button" class="scout-btn twinklers"
-                                                            @onclick="@(() => SelectTroopNumber(leader.LeaderId.ToString(), leader.FullName))">
-                                                        @leader.LeaderId - @leader.FullName
-                                                    </button>
+                                                    <MudSelectItem Value="@((int?)scoutLevel.TroopMemScoutLevelId)">@scoutLevel.TroopMemScoutLevel</MudSelectItem>
                                                 }
+                                            }
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-dropdown-2">
+                                        <label>Troop</label>
+                                        <MudSelect InputClass="pa-0" T="int?" @bind-Value="troopmemberinfo.TroopMemTroopNo" Variant="Variant.Text" Underline="false">
+                                            @if (TroopInformations?.Any() == true)
+                                            {
+                                                @foreach (var troop in TroopInformations)
+                                                {
+                                                    <MudSelectItem Value="@((int?)troop.TroopNo)">
+                                                        @troop.TroopNo - @(troop.TroopLeader?.LeaderFname ?? "No Leader")
+                                                    </MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>Scout Number (Optional)</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemScoutNumber" Variant="Variant.Text" InputType="InputType.Number"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>First Name</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemFname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>Middle Name</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemMname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>Last Name</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemLname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-input-1">
+                                        <label>Birthdate</label>
+                                        <MudDatePicker @bind-Date="troopmemberinfo.TroopMemBirthdate" />
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-input-1">
+                                        <label>Grade or Year</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemGradeOrYear" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-dropdown-2">
+                                        <label>Membership Status</label>
+                                        <MudSelect T="string" @bind-Value="troopmemberinfo.TroopMemRegStatus" InputClass="pa-0" Variant="Variant.Text" Underline="false">
+                                            <MudSelectItem Value="@("Existing Scout")">Existing Scout</MudSelectItem>
+                                            <MudSelectItem Value="@("New Scout")">New Scout</MudSelectItem>
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-input-1">
+                                        <label>Beneficiary</label>
+                                        <div style="display:flex; position: relative">
+                                            <MudTextField @bind-Value="troopmemberinfo.TroopMemBeneficiary" Variant="Variant.Text"></MudTextField>
+                                            <div style="position:absolute; right:0;">
+                                                <MudTooltip>
+                                                    <TooltipContent>
+                                                        <div>
+                                                            A beneficiary refers to your legal guardian <br />
+                                                            or an individual responsible for your care.
+                                                        </div>
+                                                    </TooltipContent>
+                                                    <ChildContent>
+                                                        <MudIconButton Icon="@Icons.Material.Outlined.Info" Color="Color.Secondary" Size="Size.Small" Class="pa-0" />
+                                                    </ChildContent>
+                                                </MudTooltip>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </MudItem>
 
-                                <!-- Name row -->
-                                <div class="grid-row">
-                                    <div class="input-design">
-                                        <label for="first name">First Name</label>
-                                        <input type="text" id="first-name" @bind="currentFname" required />
+                                <MudItem xs="12" md="12">
+                                    <div class="custom-input-1">
+                                        <label>Personal Email</label>
+                                        <MudTextField @bind-Value="troopmemberinfo.TroopMemEmail" Variant="Variant.Text" InputType="InputType.Email"></MudTextField>
                                     </div>
+                                </MudItem>
 
-                                    <div class="input-design">
-                                        <label for="middle initial">Middle Initial</label>
-                                        <input type="text" id="middle-initial" @bind="currentMInitial" required />
-                                    </div>
-
-                                    <div class="input-design">
-                                        <label for="last name">Last Name</label>
-                                        <input type="text" id="last-name" @bind="currentLname" required />
-                                    </div>
-                                </div>
-
-                                <!-- Age & Birthdate -->
-                                <div class="grid-row">
-                                    <div class="input-design" style="z-index: 3">
-                                        <label for="birth date">Birth Date</label>
-                                        <MudDatePicker @bind-Date="currentBirthDate"
-                                                       PickerVariant="PickerVariant.Dialog"
-                                                       AutoClose="true"
-                                                       Underline="false"
-                                                       Color="Color.Primary"
-                                                       DateFormat="MM/dd/yyyy"
-                                                       OpenTo="OpenTo.Year"
-                                                       AdornmentColor="Color.Primary"/>
-                                    </div>
-
-                                    <div class="input-design">
-                                        <label for="grade year">Grade/Yr.</label>
-                                        <input type="text" id="grade-year" @bind="currentGradeOrYear" required />
-                                    </div>
-                                </div>
-
-                                <!-- Grade & Status -->
-                                <div class="grid-row">
-                                    <div class="input-dropdown-toggle">
-                                        <div class="input-dropdown" @onclick="ToggleStatusDropdown" required>
-                                            <div style="display: flex; flex-direction: column;">
-                                                <label for="status">Registration Status</label>
-                                                <p>@(string.IsNullOrEmpty(currentStatus) ? "" : currentStatus)</p>
-                                            </div>
-                                            <img src="icons/dropdown.svg" alt="Status Dropdown Button" class="dropdown-button" />
-                                            <input type="text" value="@currentStatus" required style="position: absolute; opacity: 0; height: 0; width: 0; pointer-events: none;" />
-                                        </div>
-
-                                        <div class="input-dropdown-menu @(toggleStatusDropdown ? "input-dropdown-menu-on" : "") ">
-                                            <div class="input-dropdown-choices">
-                                                <button type="button" class="scout-btn twinklers" @onclick="@(() => SelectedStatus("Re-Register"))">RE - REGISTER</button>
-                                                <button type="button" class="scout-btn star" @onclick="@(() => SelectedStatus("New"))">NEW</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="input-design">
-                                        <label for="beneficiary">Beneficiary</label>
-                                        <div style="display: flex; justify-content: space-between">
-                                            <input style="width: 90%; height: 22.8px" type="text" @bind="currentBeneficiary" required />
-                                            <MudTooltip ShowOnHover="true" Text="Beneficiary: Person designated for emergencies or insurance claims." Arrow="true" Color="Color.Tertiary">
-                                                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Medium" Color="Color.Primary" />
-                                            </MudTooltip>
-                                        </div>
-                                    </div>
-
-                                </div>
-
-                                <!-- Email -->
-                                <div class="grid-row">
-                                    <div class="input-design">
-                                        <label for="email">Email</label>
-                                    <input type="text" @bind="currentEmail" style="width: 50%;" />
-                                    </div>
-                                </div>
-                            </div>
-
+                            </MudGrid>
                         }
 
+                        else if (currentRole == "Troop Leader")
+                        {
+
+                            <MudGrid Spacing="2" Class="ma-0" Style="width:100%">
+                                <!-- First Row: Always Position + Teaching Status -->
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-dropdown-2">
+                                        <label>Position</label>
+                                        <MudSelect InputClass="pa-0" T="int?" @bind-Value="leaderinfo.LeaderPositionId" Variant="Variant.Text" Underline="false">
+                                            @if (LeaderPositions?.Any() == true)
+                                            {
+                                                @foreach (var pos in LeaderPositions)
+                                                {
+                                                    <MudSelectItem Value="@((int?)pos.LeaderPositionId)">@pos.LeaderPositionName</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-dropdown-2">
+                                        <label>Teaching Status</label>
+                                        <MudSelect T="string" @bind-Value="leaderinfo.LeaderTorNt" InputClass="pa-0" Variant="Variant.Text" Underline="false">
+                                            <MudSelectItem Value="@("Teaching")">Teaching</MudSelectItem>
+                                            <MudSelectItem Value="@("Non-Teaching")">Non-Teaching</MudSelectItem>
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+
+                                <!-- Second Row: Conditional Troop Number + Registration Status -->
+                                <MudItem xs="12" md="@(leaderinfo.LeaderRegStatus == "Existing Leader" ? 6 : 12)">
+                                    <div class="custom-dropdown-2">
+                                        <label>Membership Status</label>
+                                        <MudSelect T="string" @bind-Value="leaderinfo.LeaderRegStatus" InputClass="pa-0" Variant="Variant.Text" Underline="false">
+                                            <MudSelectItem Value="@("Existing Leader")">Existing Leader</MudSelectItem>
+                                            <MudSelectItem Value="@("New Leader")">New Leader</MudSelectItem>
+                                        </MudSelect>
+                                    </div>
+                                </MudItem>
+
+                                @if (leaderinfo.LeaderRegStatus == "Existing Leader")
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <div class="custom-input-1">
+                                            <label>Suggest Troop Number (Old Troop Number)</label>
+                                            <MudTextField @bind-Value="leaderinfo.LeaderTroopNo" Variant="Variant.Text" InputType="InputType.Number"></MudTextField>
+                                        </div>
+                                    </MudItem>
+                                }
+
+                                <!-- Third Row: Name Fields (Always in the same position) -->
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>First Name</label>
+                                        <MudTextField @bind-Value="leaderinfo.LeaderFname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>Middle Name</label>
+                                        <MudTextField @bind-Value="leaderinfo.LeaderMname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <div class="custom-input-1">
+                                        <label>Last Name</label>
+                                        <MudTextField @bind-Value="leaderinfo.LeaderLname" Variant="Variant.Text"></MudTextField>
+                                    </div>
+                                </MudItem>
+
+                                <!-- Fourth Row: Birthdate + Beneficiary -->
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-input-1">
+                                        <label>Birthdate</label>
+                                        <MudDatePicker @bind-Date="leaderinfo.LeaderBirthdate" />
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <div class="custom-input-1">
+                                        <label>Beneficiary</label>
+                                        <div style="display:flex; position: relative">
+                                            <MudTextField @bind-Value="leaderinfo.LeaderBeneficiary" Variant="Variant.Text"></MudTextField>
+                                            <div style="position:absolute; right:0;">
+                                                <MudTooltip>
+                                                    <TooltipContent>
+                                                        <div>
+                                                            A beneficiary refers to your legal guardian <br />
+                                                            or an individual responsible for your care.
+                                                        </div>
+                                                    </TooltipContent>
+                                                    <ChildContent>
+                                                        <MudIconButton Icon="@Icons.Material.Outlined.Info" Color="Color.Secondary" Size="Size.Small" Class="pa-0" />
+                                                    </ChildContent>
+                                                </MudTooltip>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </MudItem>
+
+                                <!-- Fifth Row: Email -->
+                                <MudItem xs="12" md="12">
+                                    <div class="custom-input-1">
+                                        <label>Personal Email</label>
+                                        <MudTextField @bind-Value="leaderinfo.LeaderEmail" Variant="Variant.Text" InputType="InputType.Email"></MudTextField>
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+                            
+                        }
+                        </div>
 
                         <div>
                             <div style=" display: flex; justify-content: space-between;">
 
                                 <MudButton Variant="Variant.Text" Size="Size.Large" Color="Color.Primary" OnClick="CancelRegistration">Cancel</MudButton>
                                 <div style="display:flex">
-                                <p class="error-message" style="margin-inline:1rem;">@errorMessage</p>
-                                <p>@successMessage</p>
-                                <MudButton Variant="Variant.Filled" Size="Size.Large" Style="width: 11rem;" Color="Color.Primary" OnClick="SubmitRegistration" Disabled="isSubmitting">
+                                    @if (!string.IsNullOrEmpty(errorMessage))
+                                    {
+                                        <MudAlert Style="margin-inline:1rem; height: 2rem; align-items:center; align-self:center;" Severity="Severity.Error">@errorMessage</MudAlert>
+                                    }
+                                    else if (!string.IsNullOrEmpty(successMessage))
+                                    {
+                                        <MudAlert Style="margin-inline:1rem; height: 2rem;  align-items:center; align-self:center;" Severity="Severity.Success">@successMessage</MudAlert>
+                                    }
+                                <MudButton Variant="Variant.Filled" Size="Size.Large" Style="width: 11rem;" OnClick="SubmitRegistration" Color="Color.Primary" Disabled="isSubmitting">
                                 
                                     @if (isSubmitting)
                                     {
@@ -365,11 +323,11 @@
                                 </div>
                             </div>
                         </div>
-                    </form>
                 </div>
 
             </div>
             <div class="registration-placeholder-right">
+                <img style="height: 37rem; position: absolute; right: 9rem; top: 12rem;" src="images/ScoutIllustration1.png" alt="Registration Illustration" class="registration-illustration">
             </div>
         </div>
     </section>

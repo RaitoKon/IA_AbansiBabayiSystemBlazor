@@ -1,0 +1,176 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@inject ISnackbar Snackbar
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject IDialogService DialogService
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true" Class="pa-2">
+    <TitleContent>
+        <div style="display:flex; align-items:center;">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Large" Style="margin: 0.5rem"/>
+            <MudText Typo="Typo.h5" Style="margin-block:0.5rem">Assign Troop Number</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudItem>
+            <div style="display:flex; justify-content: space-between; align-items:center;">
+                <div>
+                <MudText Typo="Typo.body1">Assign <strong>@Context.LeaderFname @Context.LeaderLname</strong> to Troop.</MudText>
+                @if(Context.LeaderRegStatus == "Existing Leader")
+                {
+                    <MudText Typo="Typo.body1">Status: <strong>Existing Leader</strong></MudText>
+                    <MudText Typo="Typo.body1">Suggested Troop No: <strong>@Context.LeaderTroopNo</strong></MudText>
+                }
+                else if (Context.LeaderRegStatus == "New Leader")
+                {
+                    <MudText Typo="Typo.body1">Status: <strong>New Leader</strong></MudText>
+                }
+                </div>
+                <div>
+                    <MudItem>
+                        <MudTextField @bind-Value="_searchString"
+                                      Placeholder="Search by troop number..."
+                                      Adornment="Adornment.Start"
+                                      Immediate="true"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Variant="Variant.Text"/>
+                    </MudItem>
+                </div>
+            </div>
+        </MudItem>
+
+        <MudTable Items="@FilteredTroops" Hover="true" Dense="true">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Troop Number</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Action</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.TroopInfoId</MudTd>
+                <MudTd DataLabel="Troop Number">@context.TroopNo</MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.TroopLeaderId == null)
+                    {
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">
+                            Available
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">
+                            Occupied
+                        </MudChip>
+                    }
+                </MudTd>
+                <MudTd>
+                    @if (context.TroopLeaderId == null)
+                    {
+                        <MudButton Color="Color.Primary" 
+                                   Variant="Variant.Filled" 
+                                   Size="Size.Small"
+                                   OnClick="@(async () => await ShowAssignConfirmationDialog(context))">
+                            Assign
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Occupied
+                        </MudText>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="pa-4" Align="Align.Center" Color="Color.Secondary">
+                    @if (string.IsNullOrEmpty(_searchString))
+                    {
+                        <span>No troops available for assignment</span>
+                    }
+                    else
+                    {
+                        <span>No troops found matching "@_searchString"</span>
+                    }
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public TroopLeader Context { get; set; }
+
+    [Parameter]
+    public List<TroopInformation> TroopInformations { get; set; } = new();
+
+    private string _searchString = string.Empty;
+
+    // Filtered troops based on search
+    private IEnumerable<TroopInformation> FilteredTroops => TroopInformations
+        .Where(t => string.IsNullOrEmpty(_searchString) || 
+                   (t.TroopNo?.ToString()?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true))
+        .OrderBy(t => t.TroopInfoId);
+
+    private async Task ShowAssignConfirmationDialog(TroopInformation troop)
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "Content", $"Are you sure you want to assign <b>{Context.LeaderFname} {Context.LeaderLname}</b> to Troop Number <b>{troop.TroopNo}</b> and register as <b>{Context.LeaderPosition?.LeaderPositionName}</b>?" },
+                { "OnConfirmed", EventCallback.Factory.Create(this, () =>  AssignTroop(troop)) }
+            };
+
+            var options = new DialogOptions
+            {
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+
+            var dialog = DialogService.Show<ConfirmationDialog>("Confirm Troop Assignment", parameters, options);
+            var result = await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error showing confirmation dialog: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AssignTroop(TroopInformation troop)
+    {
+        try
+        {
+            // Assign the current leader to this troop
+            troop.TroopLeaderId = Context.LeaderId;
+
+            // Update the troop information
+            await TroopInformationService.Update(troop);
+
+            // Update the TroopLeader with the assigned troop number
+            await TroopLeaderService.LoadDataAsync();
+            var troopLeader = TroopLeaderService.Data
+                .FirstOrDefault(tl => tl.LeaderId == Context.LeaderId);
+
+            if (troopLeader != null)
+            {
+                troopLeader.LeaderTroopNo = troop.TroopNo;
+                await TroopLeaderService.Update(troopLeader);
+
+            }
+
+            // Return the leader instead of the troop so we can register them
+            MudDialog.Close(DialogResult.Ok(Context));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning troop: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

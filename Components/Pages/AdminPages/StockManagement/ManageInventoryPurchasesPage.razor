@@ -1,0 +1,346 @@
+﻿@page "/manageInventoryPurchasesPage"
+
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject ISnackbar Snackbar
+@inject TableDataService<Product> ProductService
+@inject TableDataService<ProductCategory> ProductCategoryService
+@inject TableDataService<ProductPurchase> ProductPurchaseService
+@inject NavigationManager NavigationManager
+
+@layout Layout.ThemedLayout
+
+<div class="hero-content">
+    <MudGrid Class="p-6">
+
+        <!-- Left Side: Add Purchase -->
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-8">
+                <MudForm @ref="purchaseForm">
+                    <MudText Typo="Typo.h5" Class="mb-3 font-bold text-green-700">Add New Purchase</MudText>
+
+                    <!-- Product selector -->
+                    <MudAutocomplete T="Product"
+                                     Label="Select Product"
+                                     @bind-Value="_selectedProduct"
+                                     ToStringFunc="p => p?.ProductName"
+                                     SearchFunc="SearchProducts"
+                                     CoerceText="true"
+                                     Clearable="true"
+                                     Required="true"
+                                     Class="mb-3" />
+
+                    <!-- Quantity -->
+                    <MudNumericField T="int?" @bind-Value="_enteredPurchaseQuantity"
+                                     Label="Quantity"
+                                     Required="true"
+                                     Class="mb-3" />
+
+                    <!-- Purchase price -->
+                    <MudNumericField T="decimal" @bind-Value="_enteredPurchasePrice"
+                                     Label="Purchase Price (₱)"
+                                     Required="true"
+                                     Class="mb-3" />
+
+                    <MudButton OnClick="AddPurchase" Variant="Variant.Filled" Color="Color.Primary">
+                        Add Purchase
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Right Side: Manage Purchases -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-8 rounded-lg shadow-md">
+                <MudText Typo="Typo.h5" Class="mb-3 font-bold text-blue-700">Manage Purchases</MudText>
+
+                <MudStack Row="true" Spacing="2" Class="mb-4">
+                    <MudTextField T="string"
+                                  Value="_searchText"
+                                  ValueChanged="OnSearchChanged"
+                                  Immediate="true"
+                                  Placeholder="Search by Product Name"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="flex-grow" />
+
+                    <MudSelect T="string"
+                               Label="Category"
+                               Value="_manageCategoryName"
+                               ValueChanged="OnCategoryChanged"
+                               Class="mb-3">
+                        <MudSelectItem T="string" Value="_categoryAll">All</MudSelectItem>
+                        @foreach (var category in Categories)
+                        {
+                            <MudSelectItem T="string" Value="@category.ProductCategoryName">
+                                @category.ProductCategoryName
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+
+                <MudTable T="ProductPurchaseRow"
+                          ServerData="LoadPurchases"
+                          @ref="table"
+                          Dense="true"
+                          Hover="true"
+                          Bordered="true"
+                          Striped="true">
+                    <HeaderContent>
+                        <MudTh>Product Name</MudTh>
+                        <MudTh>Purchase Price</MudTh>
+                        <MudTh>Stock In</MudTh>
+                        <MudTh>Total Cost</MudTh>
+                        <MudTh>Cumulative Stock</MudTh>
+                        <MudTh>Purchase Date</MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd>@Products.FirstOrDefault(c => c.ProductId == context.Purchase.ProductId)?.ProductName</MudTd>
+                        <MudTd>₱@context.Purchase.ProductPurchasePrice</MudTd>
+                        <MudTd>@context.Purchase.ProductPurchaseQuantity</MudTd>
+                        <MudTd>@(context.Purchase.ProductPurchasePrice* context.Purchase.ProductPurchaseQuantity)</MudTd>
+                        <MudTd>@context.CumulativeStock</MudTd>
+                        <MudTd>
+                            @(context.Purchase.ProductPurchaseDate.HasValue
+                                                        ? context.Purchase.ProductPurchaseDate.Value.ToString("MM/dd/yyyy hh:mm tt").ToUpper()
+                                                        : "-")
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+
+    <!-- Edit Dialog -->
+    <MudDialog @bind-IsVisible="_editDialogVisible" MaxWidth="MaxWidth.Small">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Edit Product</MudText>
+
+            <MudTextField T="string" Label="Name" Required="true" Class="mb-3" />
+            <MudNumericField T="decimal" Label="Price (₱)" Required="true" Class="mb-3" />
+            <MudNumericField T="int" Label="Stock" Required="true" Class="mb-3" />
+
+            <MudSelect T="int" Label="Category" Class="mb-3">
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem T="int" Value="@category.ProductCategoryId">@category.ProductCategoryName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField T="string" Label="Description" Lines="3" Class="mb-3" />
+            <MudTextField T="string" Label="Image URL" Class="mb-3" />
+        </DialogContent>
+
+        <DialogActions>
+            <MudButton OnClick="SaveEdit" Color="Color.Primary">Save</MudButton>
+            <MudButton OnClick="CancelEdit" Color="Color.Secondary">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</div>
+
+@code {
+    // --- State ---
+    private HubConnection? _hubConnection;
+    private List<ProductCategory> Categories = new();
+    private List<ProductPurchase> Purchases = new();
+    private List<Product> Products = new();
+
+    private MudTable<ProductPurchaseRow> table;
+    private MudForm purchaseForm;
+
+    private Product _selectedProduct;
+    private int? _enteredPurchaseQuantity;
+    private decimal _enteredPurchasePrice;
+
+    private string _searchText;
+    private string _manageCategoryName { get; set; } = string.Empty;
+    private string _categoryAll = "All";
+
+    private bool _editDialogVisible = false;
+
+    private ProductPurchase NewPurchase = new();
+
+    // --- Lifecycle ---
+    protected override async Task OnInitializedAsync()
+    {
+        await ProductCategoryService.LoadDataAsync();
+        await ProductPurchaseService.LoadDataAsync();
+        await ProductService.LoadDataAsync();
+
+        Products = ProductService.Data.ToList();
+        Categories = ProductCategoryService.Data.ToList();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(ProductPurchase))
+            {
+                await ProductCategoryService.LoadDataAsync();
+                await ProductPurchaseService.LoadDataAsync();
+                await ProductService.LoadDataAsync();
+
+                Products = ProductService.Data.ToList();
+                Categories = ProductCategoryService.Data.ToList();
+
+                if (table != null)
+                    await InvokeAsync(() => table.ReloadServerData());
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    // --- Table Loading ---
+    private async Task<TableData<ProductPurchaseRow>> LoadPurchases(TableState state, CancellationToken cancellationToken)
+    {
+        await ProductPurchaseService.LoadDataAsync();
+        await ProductService.LoadDataAsync();
+
+        var purchases = ProductPurchaseService.Data.ToList();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            purchases = purchases.Where(p =>
+            {
+                var productName = Products.FirstOrDefault(x => x.ProductId == p.ProductId)?.ProductName ?? "";
+                return productName.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
+
+        // Compute cumulative stock per product
+        var runningStock = new Dictionary<int, int>();
+        var tableRows = new List<ProductPurchaseRow>();
+
+        foreach (var p in purchases.OrderBy(p => p.ProductPurchaseDate))
+        {
+            if (!p.ProductId.HasValue) continue;
+
+            int productId = p.ProductId.Value;
+            if (!runningStock.ContainsKey(productId))
+                runningStock[productId] = 0;
+
+            runningStock[productId] += p.ProductPurchaseQuantity ?? 0;
+
+            tableRows.Add(new ProductPurchaseRow
+            {
+                Purchase = p,
+                CumulativeStock = runningStock[productId]
+            });
+        }
+
+        var totalItems = tableRows.Count;
+        var items = tableRows.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+        return new TableData<ProductPurchaseRow>
+        {
+            TotalItems = totalItems,
+            Items = items
+        };
+    }
+
+    // --- Purchasing ---
+    private async Task AddPurchase()
+    {
+        if (_selectedProduct == null)
+        {
+            Snackbar.Add("Invalid product selected.", Severity.Error);
+            return;
+        }
+
+        if (_enteredPurchaseQuantity <= 0)
+        {
+            Snackbar.Add("Quantity must be at least 1.", Severity.Warning);
+            return;
+        }
+
+        // ✅ Prevent empty or zero quantity
+        if (_enteredPurchaseQuantity <= 0)
+        {
+            Snackbar.Add("Quantity must be at least 1.", Severity.Warning);
+            return;
+        }
+
+        // ✅ Prevent empty or zero purchase price
+        if (_enteredPurchasePrice <= 0)
+        {
+            Snackbar.Add("Purchase price must be greater than 0.", Severity.Warning);
+            return;
+        }
+
+        var newPurchase = new ProductPurchase
+        {
+            ProductId = _selectedProduct.ProductId,
+            ProductPurchaseQuantity = _enteredPurchaseQuantity,
+            ProductPurchasePrice = _enteredPurchasePrice,
+            ProductPurchaseDate = DateTime.Now
+        };
+
+        await ProductPurchaseService.Add(newPurchase);
+
+        // Update stock
+        _selectedProduct.ProductStock += _enteredPurchaseQuantity;
+        await ProductService.Update(_selectedProduct);
+
+        Snackbar.Add("Purchase recorded and stock updated!", Severity.Success);
+
+        await ProductPurchaseService.LoadDataAsync();
+        await ProductService.LoadDataAsync();
+
+        if (table != null)
+            await table.ReloadServerData();
+
+        await purchaseForm.ResetAsync();
+        StateHasChanged();
+    }
+
+    // --- Search & Filters ---
+    private async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        if (table != null)
+            await table.ReloadServerData();
+    }
+
+    private async Task OnCategoryChanged(string value)
+    {
+        _manageCategoryName = value;
+        if (table != null)
+            await table.ReloadServerData();
+    }
+
+    // --- Editing (Dialog) ---
+    private async Task SaveEdit()
+    {
+        _editDialogVisible = false;
+        Snackbar.Add("SaveEdit clicked.", Severity.Success);
+    }
+
+    private void CancelEdit() => _editDialogVisible = false;
+
+    // --- Search Autocomplete ---
+    private Task<IEnumerable<Product>> SearchProducts(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(Products.AsEnumerable());
+
+        var result = Products
+            .Where(p => p.ProductName.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+        return Task.FromResult(result);
+    }
+
+    // --- Helper Models ---
+    public class ProductPurchaseRow
+    {
+        public ProductPurchase Purchase { get; set; }
+        public int CumulativeStock { get; set; }
+    }
+}

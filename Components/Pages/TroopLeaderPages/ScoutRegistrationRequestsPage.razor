@@ -3,30 +3,32 @@
 @using IA_AbansiBabayiSystemBlazor.Data.Models
 @using Microsoft.EntityFrameworkCore
 @using IA_AbansiBabayiSystemBlazor.Service
+@using IA_AbansiBabayiSystemBlazor.Services
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.SignalR.Client
 
-@inject ApplicationDbContext GetTroopMemberData
 @inject NavigationManager NavigationManager
-@inject TableDataService<TroopMemberRegistration> TroopService
-@inject TableDataService<RegisteredTroopMember> RegisteredService
-@inject TableDataService<TroopMemberAccount> TroopMemberAccountService
-@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopInformation> TroopInformationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject IServiceProvider ServiceProvider
 @inject UserManager<ApplicationUser> UserManager
 @inject EmailService EmailService
 @inject RoleManager<IdentityRole> RoleManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AuthenticatorService AuthenticatorService
 
 @page "/scoutRegistrationRequestsPage"
 @layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Troop Leader")]
 
 <MudDialogProvider />
 <div class="hero-content">
 
-    <MudDataGrid T="TroopMemberRegistration"
+    <MudDataGrid T="TroopMember"
                  MultiSelection="true"
                  RowsPerPage="8"
                  ColumnResizeMode="ResizeMode.Column"
@@ -48,39 +50,37 @@
                           AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
         </ToolBarContent>
         <Columns>
-            <SelectColumn T="TroopMemberRegistration" />
             <PropertyColumn Property="x => x.TroopMemId" Title="ID" Sortable="false" Filterable="false" />
             <TemplateColumn CellClass="justify-end">
                 <CellTemplate>
                     <MudStack Row>
                         <MudButton Size="@Size.Small"
                                    Variant="@Variant.Filled"
-                                   Color="@(delete_switch ? Color.Error : Color.Primary)"
+                                   Color="@(Reject_switch ? Color.Error : Color.Primary)"
                                    OnClick="@(() => SinglePersonClickedAsync(context.Item))"
                                    Disabled="@singleButtonDisabled">
-                            @(delete_switch ? "Delete" : "Register")
+                            @(Reject_switch ? "Reject" : "Register")
                         </MudButton>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemTroopNo" Title="Troop Number" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="Scout Number" Sortable="false" Filterable="false" />
             <TemplateColumn Title="Full Name" Sortable="true">
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                        @($"{context.Item.TroopMemFname}{(string.IsNullOrWhiteSpace(context.Item.TroopMemMinitial) ? "" : $" {context.Item.TroopMemMinitial[0]}.")} {context.Item.TroopMemLname}")
+                        @($"{context.Item.TroopMemFname}{(string.IsNullOrWhiteSpace(context.Item.TroopMemMname) ? "" : $" {context.Item.TroopMemMname[0]}.")} {context.Item.TroopMemLname}")
                     </span>
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.TroopMemRole"
-                            Title="Role"
+            <PropertyColumn Property="x => x.TroopMemScoutLevel.TroopMemScoutLevel"
+                            Title="Scout Level"
                             Sortable="false"
                             Filterable="false"
                             Grouping="true"
                             Hidden="true"
                             GroupByOrder="@_groupOrder"
-                            GroupExpanded="@_groupExpanded">
-
-            </PropertyColumn>
+                            GroupExpanded="@_groupExpanded"/>
             <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Registration Status" Sortable="false" Filterable="false" />
             <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
@@ -89,16 +89,9 @@
         </Columns>
         <PagerContent>
 
-            <MudDataGridPager T="TroopMemberRegistration" Style="color: #25a129ff;" />
-            <div class="pager-addOn">
-                <MudButton Size="@Size.Small"
-                           Variant="@Variant.Filled"
-                           Color="@(delete_switch ? Color.Error : Color.Primary)"
-                           OnClick="MultiplePersonClickedAsync"
-                           Disabled="@multipleButtonDisabled">
-                    @(delete_switch ? "Delete Selected" : "Register Selected")
-                </MudButton>
-                <MudSwitch @bind-Value="delete_switch" Label="Delete" LabelPlacement="Placement.Start" Color="Color.Error" />
+            <MudDataGridPager T="TroopMember" Style="color: #25a129ff;" />
+            <div class="pager-addOn">              
+                <MudSwitch @bind-Value="Reject_switch" Label="Reject" LabelPlacement="Placement.Start" Color="Color.Error" />
             </div>
         </PagerContent>
 
@@ -109,26 +102,37 @@
     [Inject] private ILogger<ScoutRegistrationRequestsPage>? Logger { get; set; }
     private HubConnection? _hubConnection;
 
-    private TroopMemberRegistration? _selectedPerson;
+    private TroopMember? _selectedPerson;
 
     private bool multipleButtonDisabled = true;
     private bool singleButtonDisabled = false;
-    public bool delete_switch { get; set; } = false;
-    private bool _isDeleteMode => delete_switch;
+    public bool Reject_switch { get; set; } = false;
+    private bool _isRejectMode => Reject_switch;
     private string _searchString = string.Empty;
     private bool isSubmitting = false;
 
     private int _currentTroopLeaderId;
-    private ApplicationUser currentUser;
+    private TroopInformation _currentTroopLeader;
 
-    private IEnumerable<TroopMemberRegistration> FilteredElements =>
-    (TroopService.Data ?? Enumerable.Empty<TroopMemberRegistration>())
-    .Where(x => x.TroopMemTroopNumber == _currentTroopLeaderId);
-
-    private HashSet<TroopMemberRegistration> _selectedItems = new();
+    private HashSet<TroopMember> _selectedItems = new();
     private HashSet<int> _selectedIds = new();
 
-    void SelectedItemsChanged(HashSet<TroopMemberRegistration> selected)
+    private IEnumerable<TroopMember> FilteredElements => (TroopMemberService.Data ?? Enumerable.Empty<TroopMember>())
+        .Where(x => x.ApplicationUser != null && x.ApplicationUser.AccountStatusId == 1 &&
+                       x.TroopMemTroopNo == _currentTroopLeader?.TroopNo);
+
+    // Quick Filter function
+    private Func<TroopMember, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        return (x.TroopMemFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+    void SelectedItemsChanged(HashSet<TroopMember> selected)
     {
         _selectedItems = selected;
         _selectedIds = selected.Select(x => x.TroopMemId).ToHashSet();
@@ -137,73 +141,86 @@
         singleButtonDisabled = _selectedItems.Any();
     }
 
-    // Quick Filter function
-    private Func<TroopMemberRegistration, bool> _quickFilter => x =>
-    {
-        if (string.IsNullOrWhiteSpace(_searchString))
-            return true;
-
-        return (x.TroopMemFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (x.TroopMemLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (x.TroopMemRole?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
-    };
-
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated ?? false)
+        try
         {
-            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var currentUser = await AuthenticatorService.GetCurrentUserAsync();
 
-            if (!string.IsNullOrEmpty(userId))
+            if (currentUser != null)
             {
-                await TroopLeaderAccountService.LoadDataAsync();
+                // Load troop leaders to find the current user's troop leader record
+                await TroopLeaderService.LoadDataAsync(q =>
+                    q.Include(t => t.ApplicationUser)
+                     .Include(t => t.LeaderPosition)
+                );
 
-                var account = TroopLeaderAccountService.Data
-                    .FirstOrDefault(a => a.Id == userId);
+                // Find the troop leader record for this user
+                var currentTroopLeader = TroopLeaderService.Data?
+                    .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
 
-                if (account != null)
+                _currentTroopLeaderId = currentTroopLeader?.LeaderId ?? 0;
+
+                // Load troop information and find the troop this leader manages
+                await TroopInformationService.LoadDataAsync();
+                _currentTroopLeader = TroopInformationService.Data?
+                    .FirstOrDefault(t => t.TroopLeaderId == _currentTroopLeaderId);
+            }
+
+            // Load troop members (scouts)
+            await TroopMemberService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.TroopMemScoutLevel)
+            );
+
+            // Rest of your SignalR setup...
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+            {
+                if (tableName == nameof(TroopMember))
                 {
-                    var troopInfo = GetTroopMemberData.RegisteredTroopLeaders
-                        .FirstOrDefault(l => l.LeaderId == account.LeaderId);
-
-                    if (troopInfo != null)
+                    await InvokeAsync(async () =>
                     {
-                        _currentTroopLeaderId = troopInfo.LeaderId;
-                        // or troopInfo.TroopNumber if that’s what you want to filter by
-                    }
+                        var currentIds = _selectedItems.Select(x => x.TroopMemId).ToHashSet();
+                        await TroopMemberService.LoadDataAsync(q =>
+                            q.Include(t => t.ApplicationUser)
+                             .Include(t => t.TroopMemScoutLevel)
+                        );
+
+                        if (TroopMemberService.Data != null)
+                        {
+                            _selectedItems = TroopMemberService.Data
+                                .Where(x => currentIds.Contains(x.TroopMemId))
+                                .ToHashSet();
+                        }
+                        StateHasChanged();
+                    });
                 }
-            }
+            });
+
+            await _hubConnection.StartAsync();
         }
-
-        await TroopService.LoadDataAsync();
-        TroopService.OnChanged += HandleDataChanged;
-
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        catch (Exception ex)
         {
-            if (tableName == nameof(TroopMemberRegistration))
-            {
-                await TroopService.LoadDataAsync();  // This updates local cache and raises UI event
-            }
-        });
-
-        await _hubConnection.StartAsync();
-
+            Snackbar.Add($"Error initializing page: {ex.Message}", Severity.Error);
+        }
     }
 
+    // Helper Methods
+    private string GetFullName(TroopMember person)
+    {
+        var middleInitial = string.IsNullOrWhiteSpace(person.TroopMemFname) ? "" : $" {person.TroopMemLname[0]}.";
+        return $"{person.TroopMemFname}{middleInitial} {person.TroopMemLname}";
+    }
 
     private async void HandleDataChanged()
     {
-        _selectedItems = new HashSet<TroopMemberRegistration>(
-            TroopService.Data.Where(x => _selectedIds.Contains(x.TroopMemId))
+        _selectedItems = new HashSet<TroopMember>(
+            TroopMemberService.Data.Where(x => _selectedIds.Contains(x.TroopMemId))
         );
 
         await InvokeAsync(StateHasChanged); // Refresh UI when data changes
@@ -211,7 +228,7 @@
 
     public async void Dispose()
     {
-        TroopService.OnChanged -= HandleDataChanged;
+        TroopMemberService.OnChanged -= HandleDataChanged;
 
         if (_hubConnection is not null)
         {
@@ -220,93 +237,111 @@
     }
 
 
-    private async Task RegisterPerson(TroopMemberRegistration person)
+    private async Task RegisterPerson(TroopMember person)
     {
-        // Step 1: Create login account
-        string Sanitize(string input) => new string(input.Where(char.IsLetterOrDigit).ToArray());
-
-        var first = Sanitize(person.TroopMemFname);
-        var last = Sanitize(person.TroopMemLname);
-        var year = DateTime.Now.ToString("yy");
-
-        var userNewEmail = $"{first}.{last}-{year}@igsc.com.ph".ToLower();
-
-        var newUser = new ApplicationUser
-        {
-            UserName = userNewEmail,
-            Email = userNewEmail,
-            EmailConfirmed = true,
-            MustChangePassword = true
-        };
-
-        var tempPassword = GenerateTemporaryPassword.GenerateTempPassword();
-
-        var result = await UserManager.CreateAsync(newUser, tempPassword);
-
-        if (!result.Succeeded)
-        {
-            foreach (var error in result.Errors)
-            {
-                Snackbar.Add($"Error: {error.Description}", Severity.Error);
-            }
-            return;
-        }
-
-        // Step 2: Move to RegisteredTroopMember
-        var registeredScout = new RegisteredTroopMember
-        {
-            TroopMemScoutNumber = person.TroopMemScoutNumber,
-            TroopMemFname = person.TroopMemFname,
-            TroopMemMinitial = person.TroopMemMinitial,
-            TroopMemLname = person.TroopMemLname,
-            TroopMemRole = person.TroopMemRole,
-            TroopMemGradeOrYear = person.TroopMemGradeOrYear,
-            TroopMemRegStatus = person.TroopMemRegStatus,
-            TroopMemBirthdate = person.TroopMemBirthdate,
-            TroopMemBeneficiary = person.TroopMemBeneficiary,
-            TroopMemEmail = userNewEmail,
-            TroopMemTroopNumber = _currentTroopLeaderId,
-        };
-        await RegisteredService.Add(registeredScout);
-
-        await UserManager.AddToRoleAsync(newUser, "Scout");
-
-        // Step 3: Link RegisteredTroopMember to user account
-        var accountLink = new TroopMemberAccount
-        {
-            TroopMemId = registeredScout.TroopMemId,
-            Id = newUser.Id
-        };
-
-        await TroopMemberAccountService.Add(accountLink);
-
-        await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, person.TroopMemEmail, person.TroopMemFname, tempPassword);
-
-        // Step 4: Remove from pending registration
-        await TroopService.Delete(person);
-
-        Snackbar.Add($"{person.TroopMemFname} {person.TroopMemLname} has been registered and account created!", Severity.Success);
-    }
-
-    private async Task DeletePerson(TroopMemberRegistration person)
-    {
-        if (person == null) return;
-
         try
         {
-            // Use TableDataService to delete and refresh cache
-            await TroopService.Delete(person);
+            string Sanitize(string input) => new string(input.Where(char.IsLetterOrDigit).ToArray());
 
-            // Show snackbar
-            Snackbar.Add($"{person.TroopMemFname} {person.TroopMemMinitial} {person.TroopMemLname} has been removed successfully!", Severity.Success);
+            var first = Sanitize(person.TroopMemFname);
+            var last = Sanitize(person.TroopMemLname);
+            var year = DateTime.Now.ToString("yy");
+            var userNewEmail = $"{first}.{last}-{year}@igsc.com.ph".ToLower();
+            var tempPassword = GenerateTemporaryPassword.GenerateTempPassword();
+
+            // Use a fresh scope to avoid all tracking issues
+            using (var scope = ServiceProvider.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                // Get the troop leader with a fresh context
+                var troopMember = await dbContext.TroopMembers
+                    .Include(t => t.ApplicationUser)
+                    .FirstOrDefaultAsync(t => t.TroopMemId == person.TroopMemId);
+
+                if (troopMember?.ApplicationUser != null)
+                {
+                    // Update user
+                    var user = troopMember.ApplicationUser;
+                    user.AccountStatusId = 2; // Approved
+                    user.MustChangePassword = true;
+                    user.PasswordHash = userManager.PasswordHasher.HashPassword(user, tempPassword);
+
+                    var updateResult = await userManager.UpdateAsync(user);
+                    if (!updateResult.Succeeded)
+                    {
+                        Snackbar.Add($"Error updating user: {string.Join(", ", updateResult.Errors.Select(e => e.Description))}", Severity.Error);
+                        return;
+                    }
+
+                    // Update TroopMember email
+                    troopMember.TroopMemRegisteredEmail = userNewEmail;
+                    await dbContext.SaveChangesAsync();
+
+                    // Assign role
+                    var existingRoles = await userManager.GetRolesAsync(user);
+                    if (existingRoles.Any())
+                    {
+                        await userManager.RemoveFromRolesAsync(user, existingRoles);
+                    }
+
+                    await userManager.AddToRoleAsync(user, troopMember.UserRole);
+
+                    await EmailService.SendRegisteredConfirmationEmailAsync(userNewEmail, troopMember.TroopMemEmail, troopMember.TroopMemFname, tempPassword);
+
+                    await TroopMemberService.NotifyChangedAsync();
+
+                    Snackbar.Add($"Success:{troopMember.TroopMemFname} {troopMember.TroopMemLname} was accepted and assigned to respective troop.", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add($"User not found for {person.TroopMemFname} {person.TroopMemLname}", Severity.Warning);
+                }
+            }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error deleting {person.TroopMemFname} {person.TroopMemLname}: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error updating account status: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Full error: {ex}");
         }
     }
 
-    private async Task ShowConfirmationDialog(bool isSingle, bool isDelete)
+    private async Task RejectPerson(TroopMember person)
+    {
+        try
+        {
+            // Make sure to include ApplicationUser when loading TroopMember data
+            await TroopMemberService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.TroopMemScoutLevel) // Add this line
+            );
+
+            // Refresh the person object to get the latest data
+            var updatedPerson = TroopMemberService.Data?
+                .FirstOrDefault(t => t.TroopMemId == person.TroopMemId);
+
+            if (updatedPerson?.ApplicationUser != null)
+            {
+                updatedPerson.ApplicationUser.AccountStatusId = 3; // Rejected
+
+                // Update using TroopMemberService - this will handle the user update through EF tracking
+                await TroopMemberService.Update(updatedPerson);
+
+                Snackbar.Add($"Success: Request of {person.TroopMemFname} {person.TroopMemLname} was Rejected.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"User not found for {person.TroopMemFname} {person.TroopMemLname}", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating account status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ShowConfirmationDialog(bool isSingle, bool isReject)
     {
 
         string message;
@@ -314,17 +349,17 @@
 
         if (isSingle && _selectedPerson != null)
         {
-            title = isDelete ? "Confirm Deletion" : "Confirm Registration";
-            message = isDelete
-                ? $"Are you sure you want to delete the request of <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b>?"
-                : $"Are you sure you want to register <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b> as a <b>{_selectedPerson.TroopMemRole}</b>?";
+            title = isReject ? "Confirm Deletion" : "Confirm Registration";
+            message = isReject
+                ? $"Are you sure you want to Reject the request of <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b>?"
+                : $"Are you sure you want to register <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b> as a <b>{_selectedPerson.UserRole}</b>?";
         }
         else if (!isSingle && _selectedItems.Any())
         {
-            title = isDelete ? "Confirm Multiple Deletions" : "Confirm Multiple Registrations";
+            title = isReject ? "Confirm Multiple Deletions" : "Confirm Multiple Registrations";
             var names = string.Join("</li><li>", _selectedItems.Select(p => $"{p.TroopMemFname} {p.TroopMemLname}"));
-            message = isDelete
-                ? $"Are you sure you want to delete these registration requests?<ul><li>{names}</li></ul>"
+            message = isReject
+                ? $"Are you sure you want to Reject these registration requests?<ul><li>{names}</li></ul>"
                 : $"Are you sure you want to remove these Troop Leaders?<ul><li>{names}</li></ul>";
         }
         else
@@ -335,19 +370,19 @@
         var parameters = new DialogParameters
         {
             { "Content", message },
-            { "IsDelete", isDelete },
+            { "IsReject", isReject },
             { "OnConfirmed", EventCallback.Factory.Create(this, async () =>
                 {
                     if (isSingle)
                     {
-                        if (isDelete) await DeletePerson(_selectedPerson);
+                        if (isReject) await RejectPerson(_selectedPerson);
                         else await RegisterPerson(_selectedPerson);
                     }
                     else
                     {
                         foreach (var person in _selectedItems.ToList())
                         {
-                            if (isDelete) await DeletePerson(person);
+                            if (isReject) await RejectPerson(person);
                             else await RegisterPerson(person);
                         }
                     }
@@ -363,40 +398,33 @@
     }
 
 
-    private async Task SinglePersonClickedAsync(TroopMemberRegistration person)
+    private async Task SinglePersonClickedAsync(TroopMember person)
     {
         _selectedPerson = person; // Store the selected person
-        await ShowConfirmationDialog(isSingle: true, isDelete: delete_switch);
+        await ShowConfirmationDialog(isSingle: true, isReject: Reject_switch);
     }
 
-    private async Task MultiplePersonClickedAsync()
+    private string GroupBackgroundColor(GroupDefinition<TroopMember> item)
     {
-        if (_selectedItems == null || !_selectedItems.Any()) return;
-        await ShowConfirmationDialog(isSingle: false, isDelete: delete_switch);
-    }
-
-    private string GroupBackgroundColor(GroupDefinition<TroopMemberRegistration> item)
-    {
-
         switch (item.Grouping.Key?.ToString())
         {
             case "Twinklers":
-                return "background-color: #f467a4; color: #ffffff;"; // Pink
+                return "background: linear-gradient(to right, #f467a4 0%, #f9b8d4 30%, #ffffff 100%); color: #ffffff;"; // Pink gradient
 
             case "Star":
-                return "background-color: #f6e03a; color: #ffffff;"; // Yellow
+                return "background: linear-gradient(to right, #f6e03a 0%, #faf0a0 30%, #ffffff 100%); color: #ffffff;"; // Yellow gradient
 
             case "Junior":
-                return "background-color: #fdbd23; color: #ffffff;"; // Green
+                return "background: linear-gradient(to right, #fdbd23 0%, #fee6a1 30%, #ffffff 100%); color: #ffffff;"; // Orange gradient
 
             case "Senior":
-                return "background-color: #ff8546; color: #ffffff;"; // Blue
+                return "background: linear-gradient(to right, #ff8546 0%, #ffc5a8 30%, #ffffff 100%); color: #ffffff;"; // Coral gradient
 
             case "Cadet":
-                return "background-color: #a821e5; color: #ffffff;"; // Purple
+                return "background: linear-gradient(to right, #a821e5 0%, #d9a6f2 30%, #ffffff 100%); color: #ffffff;"; // Purple gradient
 
             default:
-                return "background-color: transparent;"; // fallback
+                return "background-color: transparent; color: #000000;"; // fallback
         }
     }
 

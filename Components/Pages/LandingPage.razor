@@ -1,4 +1,4 @@
-﻿
+﻿@page "/"
 @page "/landingPage"
 
 @layout Layout.BlankLayout
@@ -11,9 +11,10 @@
 
 @inject HttpClient Http
 @inject ILogger<LandingPage> Logger
-@inject NavigationManager NavigationManager
-@inject IDbContextFactory<ApplicationDbContext> DbContextFactory 
-@inject PassedDataRoute PassedDataRoute
+@inject NavigationManager Navigation
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject ApplicationDbContext DbContext
+@inject RegistrationStateService RegistrationStateService
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -42,6 +43,7 @@
                         <div class="form-setup">
                             <h2 class="login-title">Login</h2>
 
+                            <!-- Remove the form tag since we're using JavaScript -->
                             <input type="text"
                                    @bind="loginModel.Email"
                                    class="input-username"
@@ -59,10 +61,19 @@
                                 <div class="error-message">@errorMessage</div>
                             }
 
-                            <button type="submit"
+                            <!-- Call JavaScript function on click -->
+                            <button type="button"
                                     @onclick="HandleLoginAsync"
-                                    class="green-button">
-                                Login
+                                    class="green-button"
+                                    disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                                }
+                                else
+                                {
+                                    <span>Login</span>
+                                }
                             </button>
 
                             <button type="button"
@@ -76,35 +87,33 @@
                         <br />
 
                         <button type="button"
-                                @onclick="ShowScoutLevel"
+                                @onclick="ShowRegistrationChoices"
                                 class="green-button">
                             Register here
                         </button>
+                    </div>
+                }
 
+                @if (currentCard == "registrationChoices-card")
+                {
+                    <div class="right-card-register2">
+                        <h1>ARE YOU A</h1>
+                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedRole("Scout"))">SCOUT</button>
+                        <h1>OR</h1>
+                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedRole("Troop Leader"))">TROOP LEADER</button>
+
+                        <button type="button" class="dimgray-button" style="margin-top: 1.5rem;" @onclick="CancelRegistration">Cancel</button>
                     </div>
                 }
 
                 @if (currentCard == "selectScoutLevel-card")
                 {
                     <div class="right-card-register">
-                        <button class="scout-btn twinklers" @onclick="@(() => SelectedScoutLevel("Twinklers"))">TWINKLERS</button>
-                        <button class="scout-btn star" @onclick="@(() => SelectedScoutLevel("Star"))">STAR</button>
-                        <button class="scout-btn junior" @onclick="@(() => SelectedScoutLevel("Junior"))">JUNIOR</button>
-                        <button class="scout-btn senior" @onclick="@(() => SelectedScoutLevel("Senior"))">SENIOR</button>
-                        <button class="scout-btn cadet" @onclick="@(() => SelectedScoutLevel("Cadet"))">CADET</button>
-                        <button class="scout-btn troop-leader" @onclick="@(() => SelectedScoutLevel("Troop Leader"))">TROOP LEADER</button>
-                    </div>
-                }
-
-                @if (currentCard == "selectStatus-card")
-                {
-                    <div class="right-card-register2">
-                        <h1>ARE YOU</h1>
-                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("Re-Register"))">Existing</button>
-                        <h1>OR</h1>
-                        <button class="green-button" style="height: 4rem;" @onclick="@(() => SelectedStatus("New"))">New</button>
-
-                        <button type="button" class="dimgray-button" style="margin-top: 1.5rem;" @onclick="CancelRegistration">Cancel</button>
+                        <button class="scout-btn twinklers" @onclick="@(() => SelectedScoutLevel(1))">TWINKLERS</button>
+                        <button class="scout-btn star" @onclick="@(() => SelectedScoutLevel(2))">STAR</button>
+                        <button class="scout-btn junior" @onclick="@(() => SelectedScoutLevel(3))">JUNIOR</button>
+                        <button class="scout-btn senior" @onclick="@(() => SelectedScoutLevel(4))">SENIOR</button>
+                        <button class="scout-btn cadet" @onclick="@(() => SelectedScoutLevel(5))">CADET</button>
                     </div>
                 }
 
@@ -120,15 +129,15 @@
                     <img src="images/GIRL SCOUT LOGO.png" alt="Logo" class="nav-logo">
                     <div class="nav-links">
                         <img src="icons/Menu.svg" alt="Menu" class="menu-icon">
-                        <a href="" class="nav-link">HOME</a>
+                                <a href="/landingPage" class="nav-link">HOME</a>
                         <div class="badgedropdown">
-                            <a href="#" class="nav-link">BADGES</a>
-                            <div class="badgedropdown-content">
-                                <NavLink href="/Twinkler">Twinkler Girl Scout</NavLink>
-                                <NavLink href="/Star">Star Girl Scout</NavLink>
-                                <NavLink href="/Junior">Junior Girl Scout</NavLink>
-                                <NavLink href="/Senior">Senior Girl Scout</NavLink>
-                                <NavLink href="/Cadet">Cadet Girl Scout</NavLink>
+                            <a href="" class="nav-link">BADGES</a>
+                                <div class="badgedropdown-content">
+                                <a href="/Twinkler">Twinkler Girl Scout</a>
+                                <a href="/Star">Star Girl Scout</a>
+                                <a href="/Junior">Junior Girl Scout</a>
+                                <a href="/Senior">Senior Girl Scout</a>
+                                <a href="/Cadet">Cadet Girl Scout</a>
                             </div>
                         </div>
                         <a href="" class="nav-link">TROOP<br>LOCATOR</a>
@@ -147,11 +156,11 @@
                     <img src="icons/dropdown.svg" alt="dropdown-button" class="dropdown-icon">
                 </div>
                 <div class="dropdown-content @(showDropDown ? "dropdown-content-show" : "dropdown-content")" @onmouseleave="ResetBackground">
-                    <button class="scout-btn twinklers" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Twinklers.png"))" @onclick="@(() => SelectedScoutLevel("Twinklers"))">TWINKLERS</button>
-                    <button class="scout-btn star" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Star.png"))" @onclick="@(() => SelectedScoutLevel("Star"))">STAR</button>
-                    <button class="scout-btn junior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Junior.png"))" @onclick="@(() => SelectedScoutLevel("Junior"))">JUNIOR</button>
-                    <button class="scout-btn senior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Senior.png"))" @onclick="@(() => SelectedScoutLevel("Senior"))">SENIOR</button>
-                    <button class="scout-btn cadet" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Cadet.png"))" @onclick="@(() => SelectedScoutLevel("Cadet"))">CADET</button>
+                    <button class="scout-btn twinklers" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Twinklers.png"))" @onclick="@(() => SelectedScoutLevelWithRole(1))">TWINKLERS</button>
+                    <button class="scout-btn star" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Star.png"))" @onclick="@(() => SelectedScoutLevelWithRole(2))">STAR</button>
+                    <button class="scout-btn junior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Junior.png"))" @onclick="@(() => SelectedScoutLevelWithRole(3))">JUNIOR</button>
+                    <button class="scout-btn senior" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Senior.png"))" @onclick="@(() => SelectedScoutLevelWithRole(4))">SENIOR</button>
+                    <button class="scout-btn cadet" @onmouseover="@(() => ChangeBackground("images/BG-Vector-Cadet.png"))" @onclick="@(() => SelectedScoutLevelWithRole(5))">CADET</button>
                 </div>
             </section>
             <div class="hero-content">

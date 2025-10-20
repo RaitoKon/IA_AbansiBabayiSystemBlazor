@@ -1,0 +1,396 @@
+﻿@using System.Net.Http.Json
+@using IA_AbansiBabayiSystemBlazor.Data
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.EntityFrameworkCore
+@using IA_AbansiBabayiSystemBlazor.Service
+@using IA_AbansiBabayiSystemBlazor.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject ApplicationDbContext GetTroopMemberData
+@inject NavigationManager NavigationManager
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<ScoutJoinedEvent> ScoutJoinedEventService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject TableDataService<TroopMemberScoutLevel> TroopMemberScoutLevelService
+@inject TableDataService<AddEventsOrAnnouncement> AddEventsOrAnnouncementService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@inject AuthenticatorService AuthenticatorService
+
+@page "/scoutEventRegistrationRequestPage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Troop Leader")]
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudPaper Class="pa-6" Elevation="2">
+                <MudItem Class="d-flex">
+                    <MudText Typo="Typo.h5">Scout Event Registration</MudText>
+                    <MudSpacer />
+                    <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                </MudItem>
+                <MudGrid Style="width: 100%; margin: 0;">
+                    @foreach (var e in AllEvents)
+                    {
+                        <MudItem xs="12" Style="padding: 1rem;">
+                            <MudCard Style="width: 100%;">
+                                <div style="display:flex; height: 100%">
+                                    <MudCardContent Style="display: flex; padding: 0.5rem; width: 100%;">
+                                        @if (e.EventOrAnnouncementType == "Event") // Show date paper only for events
+                                        {
+                                            <MudPaper Class="mud-theme-primary" Style="display: flex; flex-direction: column; height: 100%; width: 15rem; align-items: center; justify-content: center; text-align: center;">
+                                                @if (e.EventsOrAnnouncementsDateFrom.HasValue)
+                                                {
+                                                    <div>
+                                                        <p style="font-family: Lavish, sans-serif; font-size: 1.5rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("MMMM")</p>
+                                                        @if (@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd") == @e.EventsOrAnnouncementsDateTo.Value.ToString("dd"))
+                                                        {
+                                                            <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper()</p>
+                                                        }
+                                                        else
+                                                        {
+                                                            <p style="font-family: 'Bebas Neue', serif; font-size: 5rem; margin: -1rem;">@e.EventsOrAnnouncementsDateFrom.Value.ToString("dd").ToUpper() - @e.EventsOrAnnouncementsDateTo?.ToString("dd").ToUpper()</p>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <p>No date set</p>
+                                                }
+                                            </MudPaper>
+                                        }
+                                        <div style="display: flex; flex-direction:column; justify-content: space-between; flex: 1; text-align:left">
+                                                <MudItem Class="pb-4 ml-3">
+                                                    <MudText Typo="Typo.h5">
+                                                        @e.EventsOrAnnouncementsTitle
+                                                    </MudText>
+                                                    <MudText Typo="Typo.body2">
+                                                        @e.EventsOrAnnouncementsDescription
+                                                    </MudText>
+                                                    
+                                                </MudItem>
+                                                <MudItem Class="pb-4 ml-3">
+                                                    <MudText Typo="Typo.body2">
+                                                        Date Posted: @e.DatePosted.Value.ToString("MMMM dd, yyyy")
+                                                    </MudText>
+                                                </MudItem>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(e.EventsOrAnnouncementsImagePath))
+                                        {
+                                            <MudCardMedia Image="@e.EventsOrAnnouncementsImagePath" Style="height: 100%; width: 40%;" />
+                                        }
+                                    </MudCardContent>
+                                </div>
+                                <MudExpansionPanels Style="">
+                                    <MudExpansionPanel Text="Scout Event Registration" HeaderClass="py-0">
+                                        <ChildContent>
+                                            <MudDataGrid T="TroopMember"
+                                                         @ref="dataGrid"
+                                                         RowsPerPage="8"
+                                                         ColumnResizeMode="ResizeMode.Column"
+                                                         Dense="true"
+                                                         Striped="true"
+                                                         Items="@FilteredElements"
+                                                         SortMode="SortMode.Multiple"
+                                                         Filterable="true"
+                                                         Groupable="true"
+                                                         QuickFilter="@_quickFilter"
+                                                         Hideable="true"
+                                                         SelectedItems="@_selectedItems"
+                                                         GroupStyleFunc="GroupBackgroundColor"
+                                                         ReadOnly="@_readOnly">
+
+                                                <ToolBarContent>
+                                                    <MudSpacer />
+                                                    <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
+                                                                  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+                                                </ToolBarContent>
+
+                                                <Columns>
+                                                    <!-- Scout Info -->
+                                                    <PropertyColumn Property="x => e.EventsOrAnnouncementsId" Title="Event ID" Sortable="false" Filterable="false" />
+                                                    <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="Scout Number" Sortable="false" Filterable="false" />
+                                                    <PropertyColumn Property="x => x.TroopMemTroopNo" Title="Troop Number" Sortable="false" Filterable="false" />
+                                                    <PropertyColumn Property="x => x.TroopMemScoutLevel.TroopMemScoutLevel" Title="Scout Level" Sortable="false" Filterable="false" />
+                                                    <TemplateColumn Title="Full Name" Sortable="true">
+                                                        <CellTemplate Context="context">
+                                                            <span style="white-space: nowrap">
+                                                                @($"{context.Item.TroopMemFname}{(string.IsNullOrWhiteSpace(context.Item.TroopMemMname) ? "" : $" {context.Item.TroopMemMname[0]}.")} {context.Item.TroopMemLname}")
+                                                            </span>
+                                                        </CellTemplate>
+                                                    </TemplateColumn>
+
+                                                    <!-- Payment Status Column -->
+                                                    <TemplateColumn Title="Registration Payment Status" CellStyle="padding-block: 0;">
+                                                        <CellTemplate Context="item">
+                                                            @{
+                                                                // Find the ScoutJoinedEvent row for this scout + current event
+                                                                var joinedEvent = ScoutJoinedEventService.Data?
+                                                                .FirstOrDefault(s => s.TroopMemId == item.Item.TroopMemId && s.EventsOrAnnouncementId == e.EventsOrAnnouncementsId);
+
+                                                                var currentStatus = joinedEvent?.PaymentStatus ?? "Not Paid";
+                                                            }
+
+                                                            <MudSelect Value="currentStatus"
+                                                                       ValueChanged="@(async (string newValue) => await OnPaymentStatusChanged(newValue, item.Item, joinedEvent, e.EventsOrAnnouncementsId))"
+                                                                       InputClass="pa-2" Lines="2" Style="width:1rem; top:-0.4rem;">
+                                                                <MudSelectItem Value="@("Paid")">
+                                                                    <MudChip Color="@(currentStatus == "Paid" ? Color.Success : Color.Default)"
+                                                                             Variant="Variant.Filled" Size="Size.Small">
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Check" />
+                                                                        Paid
+                                                                    </MudChip>
+                                                                </MudSelectItem>
+                                                                <MudSelectItem Value="@("Not Paid")">
+                                                                    <MudChip Color="@(currentStatus == "Not Paid" ? Color.Error : Color.Default)"
+                                                                             Variant="Variant.Filled" Size="Size.Small">
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Close" />
+                                                                        Not Paid
+                                                                    </MudChip>
+                                                                </MudSelectItem>
+                                                            </MudSelect>
+                                                        </CellTemplate>
+                                                    </TemplateColumn>
+                                                </Columns>
+                                            </MudDataGrid>
+
+                                        </ChildContent>
+                                    </MudExpansionPanel>
+                                </MudExpansionPanels>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+    </MudPaper>
+</div>
+@code {
+    private TroopMember? _selectedPerson;
+    private HubConnection? _hubConnection;
+
+    private string[] troopRoles = { "Twinklers", "Star", "Junior", "Senior", "Cadet" };
+    private string[] registrationStatuses = { "New", "Existing" };
+    private bool multipleButtonDisabled = true;
+    private bool singleButtonDisabled = false;
+    private string _searchString = string.Empty;
+    private bool isSubmitting = false;
+    public bool Archive_switch { get; set; } = true;
+    private bool _isArchiveMode => Archive_switch;
+    private bool _readOnly;
+
+    private TroopInformation _currentTroopLeader;
+
+    private MudDataGrid<TroopMember> dataGrid;
+
+    private List<TroopMemberScoutLevel> _scoutLevels = new();
+
+    private List<AddEventsOrAnnouncement> AllEvents =>
+    AddEventsOrAnnouncementService.Data?
+        .Where(e => e.EventOrAnnouncementType == "Event")
+        .OrderByDescending(e => e.DatePosted)
+        .ToList() ?? new List<AddEventsOrAnnouncement>();
+
+    private IEnumerable<TroopMember> FilteredElements => (TroopMemberService.Data ?? Enumerable.Empty<TroopMember>())
+    .Where(x => x.ApplicationUser != null && x.ApplicationUser.AccountStatusId == 2 &&
+                   x.TroopMemTroopNo == _currentTroopLeader?.TroopNo);
+
+    private HashSet<TroopMember> _selectedItems = new();
+    private HashSet<int> _selectedIds = new();
+    private HashSet<TroopMember> GetSelectedItems()
+    {
+        if (TroopMemberService.Data == null) return new();
+        return TroopMemberService.Data.Where(x => _selectedIds.Contains(x.TroopMemId)).ToHashSet();
+    }
+
+    // Quick Filter function
+    private Func<TroopMember, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        return (x.TroopMemFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.UserRole?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemGradeOrYear?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemRegStatus?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemBeneficiary?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemBirthdate?.ToString("MMMM dd, yyyy").Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+
+            var currentUser = await AuthenticatorService.GetCurrentUserAsync();
+
+            if (currentUser != null)
+            {
+                // Load troop leaders to find the current user's troop leader record
+                await TroopLeaderService.LoadDataAsync(q =>
+                    q.Include(t => t.ApplicationUser)
+                );
+
+                // Find the troop leader record for this user
+                var currentTroopLeader = TroopLeaderService.Data?
+                    .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
+
+                var currentTroopLeaderId = currentTroopLeader?.LeaderId ?? 0;
+
+                // Load troop information and find the troop this leader manages
+                await TroopInformationService.LoadDataAsync();
+                _currentTroopLeader = TroopInformationService.Data?
+                    .FirstOrDefault(t => t.TroopLeaderId == currentTroopLeaderId);
+
+                if (_currentTroopLeader != null)
+                {
+                    Console.WriteLine($"Loaded troop information with TroopNo: {_currentTroopLeader.TroopNo}");
+                }
+                else
+                {
+                    Snackbar.Add("No troop information found for current user", Severity.Warning);
+                }
+
+                await AddEventsOrAnnouncementService.LoadDataAsync();
+            }
+
+            // Load troop members (scouts)
+            await TroopMemberService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.TroopMemScoutLevel)
+            );
+
+            await ScoutJoinedEventService.LoadDataAsync();
+
+            // Rest of your SignalR setup...
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+            {
+                if (tableName == nameof(TroopMember))
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        var currentIds = _selectedItems.Select(x => x.TroopMemId).ToHashSet();
+                        await TroopMemberService.LoadDataAsync(q =>
+                            q.Include(t => t.ApplicationUser)
+                             .Include(t => t.TroopMemScoutLevel)
+                        );
+
+                        if (TroopMemberService.Data != null)
+                        {
+                            _selectedItems = TroopMemberService.Data
+                                .Where(x => currentIds.Contains(x.TroopMemId))
+                                .ToHashSet();
+                        }
+                        StateHasChanged();
+                    });
+                }
+            });
+
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error initializing page: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void HandleDataChanged()
+    {
+        if (TroopMemberService.Data != null && _selectedIds.Any())
+        {
+            _selectedItems = TroopMemberService.Data
+                .Where(x => _selectedIds.Contains(x.TroopMemId))
+                .ToHashSet();
+        }
+        _selectedItems = new HashSet<TroopMember>(_selectedItems);
+        InvokeAsync(StateHasChanged); // Refresh UI when data changes
+    }
+
+    public async void Dispose()
+    {
+        TroopMemberService.OnChanged -= HandleDataChanged;
+
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+
+    private async Task OnPaymentStatusChanged(string newValue, TroopMember member, ScoutJoinedEvent? joinedEvent, int eventId)
+    {
+        try
+        {
+            if (joinedEvent == null)
+            {
+                joinedEvent = new ScoutJoinedEvent
+                {
+                    TroopMemId = member.TroopMemId,
+                    EventsOrAnnouncementId = eventId,
+                    PaymentStatus = newValue,
+                    DateModified = DateTime.Now
+                };
+
+                await ScoutJoinedEventService.Add(joinedEvent);
+            }
+            else
+            {
+                joinedEvent.PaymentStatus = newValue;
+                joinedEvent.DateModified = DateTime.Now;
+                await ScoutJoinedEventService.Update(joinedEvent);
+            }
+
+            // Refresh the local service data
+            await ScoutJoinedEventService.LoadDataAsync();
+
+            Snackbar.Add($"{member.TroopMemFname} {member.TroopMemLname}'s payment status updated to {newValue}.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating payment status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GroupBackgroundColor(GroupDefinition<TroopMember> item)
+    {
+        switch (item.Grouping.Key?.ToString())
+        {
+            case "Twinklers":
+                return "background: linear-gradient(to right, #f467a4 0%, #f9b8d4 30%, #ffffff 100%); color: #ffffff;"; // Pink gradient
+
+            case "Star":
+                return "background: linear-gradient(to right, #f6e03a 0%, #faf0a0 30%, #ffffff 100%); color: #ffffff;"; // Yellow gradient
+
+            case "Junior":
+                return "background: linear-gradient(to right, #fdbd23 0%, #fee6a1 30%, #ffffff 100%); color: #ffffff;"; // Orange gradient
+
+            case "Senior":
+                return "background: linear-gradient(to right, #ff8546 0%, #ffc5a8 30%, #ffffff 100%); color: #ffffff;"; // Coral gradient
+
+            case "Cadet":
+                return "background: linear-gradient(to right, #a821e5 0%, #d9a6f2 30%, #ffffff 100%); color: #ffffff;"; // Purple gradient
+
+            default:
+                return "background-color: transparent; color: #000000;"; // fallback
+        }
+    }
+
+
+    private bool _groupByPosition = true; // enable grouping on load
+    private int _groupOrder = 0;              // group priority
+    private bool _groupExpanded = true;       // whether it's expanded initially
+}

@@ -6,7 +6,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
-        <MudButton Color="@(IsDelete? Color.Error: Color.Primary)"
+        <MudButton Color="@(IsReject? Color.Error: IsConfirmRoleChange? Color.Warning: Color.Primary)"
                    Variant="Variant.Filled"
                    OnClick="ConfirmActionAsync"
                    Style="width: 7rem;">
@@ -15,12 +15,20 @@
             {
                 <MudProgressCircular Indeterminate="true"
                                      Size="Size.Small"
-                                     Color="Color.Tertiary"/>
+                Color="Color.Tertiary" />
             }
             else
             {
-                <MudIcon Icon="@(IsDelete? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)" />
-                @(IsDelete ? "Delete" : "Confirm")
+                @if (IsConfirmRoleChange == true)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" />
+                    @("Confirm")              
+                }
+                else
+                {
+                    <MudIcon Icon="@(IsReject? Icons.Material.Filled.Delete : Icons.Material.Filled.CheckCircle)" />
+                    @(IsReject ? "Reject" : "Confirm")
+                }
             }
         </MudButton>
     </DialogActions>
@@ -34,20 +42,29 @@
     public string Content { get; set; }
 
     [Parameter]
-    public bool IsDelete { get; set; }
+    public bool IsConfirmRoleChange { get; set; }
 
     [Parameter]
-    public bool isSubmitting { get; set; }
+    public bool IsReject { get; set; }
 
-    [Parameter] public EventCallback OnConfirmed { get; set; }
+    [Parameter]
+    public EventCallback OnConfirmed { get; set; }
+
+    private bool isSubmitting; // 👈 make this local instead of [Parameter]
 
     private async Task ConfirmActionAsync()
     {
         isSubmitting = true;
+        StateHasChanged(); // ensure spinner shows
+
         try
         {
-            await OnConfirmed.InvokeAsync();  // ✅ run parent’s operation
-            MudDialog.Close(DialogResult.Ok(true)); // ✅ close after done
+            await OnConfirmed.InvokeAsync();
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
         }
         finally
         {

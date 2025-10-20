@@ -1,0 +1,25 @@
+﻿
+.page-title {
+    margin-left: 1rem;
+    padding: 2rem;
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2rem;
+    box-sizing: border-box;
+    background-image: url(images/BG-Base1.png);
+    background-size: cover;
+    height: 95vh;
+    gap: 2rem;
+}
+
+.pager-addOn {
+    position: absolute;
+    display: flex;
+    gap: 2rem;
+    top: 0.7rem;
+    margin-left: 4.5rem;
+}

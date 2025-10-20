@@ -3,7 +3,7 @@ using IA_AbansiBabayiSystemBlazor.Data;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
 using IA_AbansiBabayiSystemBlazor.Hubs;
 using IA_AbansiBabayiSystemBlazor.Service;
-
+using IA_AbansiBabayiSystemBlazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
@@ -42,10 +42,11 @@ foreach (var dbSetProp in dbSetProperties)
 
 // --- General Services ---
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-builder.Services.AddScoped<PassedDataRoute>();
+builder.Services.AddScoped<RegistrationStateService>();
 builder.Services.AddMudServices();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<AuthenticatorService>();
 
 // --- Email, Http, Controllers ---
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7106") });

@@ -1,0 +1,210 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject ISnackbar Snackbar
+@inject UserManager<ApplicationUser> UserManager
+@inject IDialogService DialogService
+
+@page "/changeRolesPage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudDataGrid T="TroopLeader"
+                 Items="Admins"
+                 RowsPerPage="8"
+                 ColumnResizeMode="ResizeMode.Column"
+                 Striped="true">
+
+        <Columns>
+            <PropertyColumn Property="x => x.LeaderId" Title="ID" Filterable="false" Sortable="false" />
+            <TemplateColumn Title="Full Name" Sortable="true">
+                <CellTemplate Context="context">
+                    <span style="white-space: nowrap">
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMname) ? "" : $" {context.Item.LeaderMname[0]}.")} {context.Item.LeaderLname}")
+                    </span>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Filterable="false" Sortable="false" />
+            <PropertyColumn Property="x => x.LeaderRegisteredEmail" Title="Registered Email" Filterable="false" Sortable="false" />
+
+            <TemplateColumn Title="User Role" CellStyle="padding-block: 0; width: 15rem;">
+                <CellTemplate Context="item">
+                   <MudSelect T="string"
+                                Value="item.Item.UserRole"
+                                ValueChanged="@(async (string newValue) => await OnRoleChanged(item.Item, newValue))"
+                                InputClass="pa-2" Lines="2" Style="width:1rem; top:-0.4rem;">
+
+                        <MudSelectItem Value="@("Admin")">
+                            <MudChip Color="@(item.Item.UserRole == "Admin" ? Color.Primary : Color.Default)"
+                                     Variant="Variant.Filled" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" />
+                                Admin
+                            </MudChip>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("Troop Leader")">
+                            <MudChip Color="@(item.Item.UserRole == "Troop Leader" ? Color.Success : Color.Default)"
+                                     Variant="Variant.Filled" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups" />
+                                Troop Leader
+                            </MudChip>
+                        </MudSelectItem>
+                    </MudSelect>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</div>
+
+@code {
+    private IEnumerable<TroopLeader> Admins =>
+        TroopLeaderService.Data?.Where(x => x.UserRole == "Admin") ?? Enumerable.Empty<TroopLeader>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await TroopLeaderService.LoadDataAsync(q => q.Include(t => t.ApplicationUser));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading admins: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnRoleChanged(TroopLeader leader, string newRole)
+    {
+        // 🔹 Skip if no change
+        if (leader.UserRole == newRole)
+            return;
+
+        var oldRole = leader.UserRole;
+
+        // 🔹 Create a safe copy for rollback in case of failure
+        var leaderCopy = new TroopLeader
+        {
+            LeaderId = leader.LeaderId,
+            LeaderFname = leader.LeaderFname,
+            LeaderLname = leader.LeaderLname,
+            LeaderEmail = leader.LeaderEmail,
+            LeaderRegisteredEmail = leader.LeaderRegisteredEmail,
+            UserRole = leader.UserRole,
+            LeaderTorNt = leader.LeaderTorNt,
+            LeaderRegStatus = leader.LeaderRegStatus,
+            LeaderBeneficiary = leader.LeaderBeneficiary,
+            LeaderTroopNo = leader.LeaderTroopNo,
+            ApplicationUser = leader.ApplicationUser
+        };
+
+        // 🔹 Step 1: Ask for confirmation
+        var parameters = new DialogParameters
+        {
+            ["Content"] = $"Are you sure you want to change the role of <b>{leader.LeaderFname} {leader.LeaderLname}</b> from <b>{oldRole}</b> to <b>{newRole}</b>?",
+            ["IsConfirmRoleChange"] = true
+        };
+
+        var dialog = DialogService.Show<ConfirmationDialog>("Confirm Role Change", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+        {
+            Snackbar.Add("Role change canceled.", Severity.Info);
+            await TroopLeaderService.LoadDataAsync();
+            return;
+        }
+
+        try
+        {
+            // 🔹 Step 2: Update ASP.NET Identity user role
+            if (leader.ApplicationUser != null)
+            {
+                var user = await UserManager.FindByIdAsync(leader.ApplicationUser.Id);
+                if (user != null)
+                {
+                    var oldRoles = await UserManager.GetRolesAsync(user);
+                    if (oldRoles.Any())
+                        await UserManager.RemoveFromRolesAsync(user, oldRoles);
+                        await UserManager.AddToRoleAsync(user, newRole);
+                }
+            }
+
+            await TroopLeaderService.LoadDataAsync();
+            var latestLeader = TroopLeaderService.Data.FirstOrDefault(x => x.LeaderId == leader.LeaderId);
+
+            if (latestLeader == null)
+            {
+                Snackbar.Add("Leader record no longer exists. Please refresh.", Severity.Warning);
+                return;
+            }
+
+            // 🔹 Step 4: Apply updates to the tracked entity
+            latestLeader.UserRole = newRole;
+
+            // 🔹 Step 5: Update in database
+            await TroopLeaderService.Update(latestLeader);
+
+            // 🔹 Step 6: If the new role is "Troop Leader", open the Assign Troop dialog
+            if (newRole == "Troop Leader")
+            {
+                try
+                {
+                    await TroopInformationService.LoadDataAsync();
+                    var troops = TroopInformationService.Data.ToList();
+
+                    var assignParams = new DialogParameters
+                    {
+                        ["Context"] = latestLeader,
+                        ["TroopInformations"] = troops
+                    };
+
+                    var assignOptions = new DialogOptions
+                    {
+                        CloseButton = false,
+                        MaxWidth = MaxWidth.Medium,
+                        FullWidth = true
+                    };
+
+                    var assignDialog = DialogService.Show<AssignTroopNoDialog>("Assign Troop Number", assignParams, assignOptions);
+                    var assignResult = await assignDialog.Result;
+
+                    if (!assignResult.Canceled)
+                    {
+                        Snackbar.Add($"Successfully assigned troop to {latestLeader.LeaderFname}.", Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add("Troop assignment skipped.", Severity.Info);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error opening troop assignment dialog: {ex.Message}", Severity.Error);
+                }
+            }
+
+            // 🔹 Step 7: Refresh grid data
+            await TroopLeaderService.LoadDataAsync();
+            Snackbar.Add($"{leader.LeaderFname} {leader.LeaderLname} is now '{newRole}'.", Severity.Success);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // 🔹 Handles the "expected 1 row but affected 0 rows" issue
+            Snackbar.Add("Another user or process updated this record. Please refresh and try again.", Severity.Warning);
+            await TroopLeaderService.LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            // 🔹 Rollback if something went wrong
+            leader.UserRole = leaderCopy.UserRole;
+            Snackbar.Add($"Error updating role: {ex.Message}", Severity.Error);
+            await TroopLeaderService.LoadDataAsync();
+        }
+    }
+
+
+}

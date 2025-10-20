@@ -17,10 +17,15 @@ public class TableDataService<T> where T : class
         _hubContext = hubContext;
     }
 
-    public async Task LoadDataAsync()
+    public async Task LoadDataAsync(Func<IQueryable<T>, IQueryable<T>>? queryFunc = null)
     {
         using var context = _contextFactory.CreateDbContext();
-        Data = await context.Set<T>().ToListAsync();
+        IQueryable<T> query = context.Set<T>();
+
+        if (queryFunc != null)
+            query = queryFunc(query);
+
+        Data = await query.ToListAsync();
         OnChanged?.Invoke();
     }
 

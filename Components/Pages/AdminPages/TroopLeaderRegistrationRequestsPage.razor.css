@@ -4,10 +4,11 @@
     padding: 2rem;
 }
 
-.hero-content{
+.hero-content {
     padding: 1rem;
     box-sizing: border-box;
     background-image: url(images/BG-Base1.png);
+    height: 95vh;
 }
 
 .pager-addOn {

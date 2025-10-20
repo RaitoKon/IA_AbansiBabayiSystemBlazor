@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using IA_AbansiBabayiSystemBlazor.Data.Models;
-using MudBlazor.Interfaces;
+using IA_AbansiBabayiSystemBlazor.Service;
+using Microsoft.EntityFrameworkCore; // Add for Include extension
+using System.Linq; // Add for FirstOrDefault
 
 namespace IA_AbansiBabayiSystemBlazor.Controllers
 {
@@ -12,32 +14,82 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly TableDataService<TroopLeader> _troopLeaderService;
+        private readonly TableDataService<TroopMember> _troopMemberService;
 
-        public AuthController(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
+        public AuthController(
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager,
+            TableDataService<TroopLeader> troopLeaderService,
+            TableDataService<TroopMember> troopMemberService )
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _troopLeaderService = troopLeaderService;
+            _troopMemberService = troopMemberService;
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> RedirectLogin([FromForm] string email, [FromForm] string password)
         {
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, password))
+            try
             {
-                return Redirect("/landingPage?error=invalid");
+                Console.WriteLine($"Login attempt for email: {email}");
+
+                await _troopLeaderService.LoadDataAsync(query =>
+                    query.Include(t => t.ApplicationUser)
+                );
+
+                await _troopMemberService.LoadDataAsync(query =>
+                    query.Include(t => t.ApplicationUser)
+                );
+
+                var troopLeader = _troopLeaderService.Data
+                    .FirstOrDefault(t =>
+                        (!string.IsNullOrEmpty(t.LeaderRegisteredEmail) && t.LeaderRegisteredEmail == email));
+
+                var troopMember = _troopMemberService.Data
+                    .FirstOrDefault(t =>
+                        (!string.IsNullOrEmpty(t.TroopMemRegisteredEmail) && t.TroopMemRegisteredEmail == email));
+
+                if (troopLeader?.ApplicationUser == null && troopMember?.ApplicationUser == null)
+                {
+                    Console.WriteLine("No application user found");
+                    return BadRequest(new { error = "Invalid credentials" });
+                }
+
+                var user = troopLeader?.ApplicationUser ?? troopMember?.ApplicationUser;
+
+                if (user.AccountStatusId != 2)
+                {
+                    return BadRequest(new { error = "Account is not active" });
+                }
+
+                var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
+                Console.WriteLine($"Password valid: {isPasswordValid}");
+
+                if (!isPasswordValid)
+                {
+                    return BadRequest(new { error = "Invalid credentials" });
+                }
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                Console.WriteLine("Sign in successful");
+
+                if (user.MustChangePassword)
+                {
+                    Console.WriteLine("Redirecting to password reset");
+                    return Ok(new { redirectUrl = "/forceResetPasswordPage" });
+                }
+
+                Console.WriteLine("Redirecting to user page");
+                return Ok(new { redirectUrl = "/userPage" });
             }
-
-            // Sign the user in first
-            await _signInManager.SignInAsync(user, isPersistent: false);
-
-            // Then check if they must reset password
-            if (user is ApplicationUser appUser && appUser.MustChangePassword)
+            catch (Exception ex)
             {
-                return Redirect("/forceResetPasswordPage");
+                Console.WriteLine($"Login error: {ex}");
+                return BadRequest(new { error = "An unexpected error occurred" });
             }
-
-            return Redirect("/userPage");
         }
 
         [HttpPost("reset-login")]
@@ -53,7 +105,7 @@ namespace IA_AbansiBabayiSystemBlazor.Controllers
             if (!result.Succeeded)
                 return BadRequest("Login failed after password reset.");
 
-            return Ok(); // Successful login
+            return Ok();
         }
 
         public class ResetLoginModel

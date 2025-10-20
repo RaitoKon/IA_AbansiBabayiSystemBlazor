@@ -8,8 +8,8 @@
 
 @inject ApplicationDbContext GetTroopLeaderData
 @inject NavigationManager NavigationManager
-@inject TableDataService<RegisteredTroopLeader> RegisteredService
-@inject TableDataService<TroopLeaderAccount> TroopLeaderAccountService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopInformation> TroopInformationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -17,87 +17,194 @@
 
 @page "/troopLeaderDashboardPage"
 @layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
 
 <MudDialogProvider />
 <div class="hero-content">
 
-    <MudDataGrid T="RegisteredTroopLeader"
-        @ref="dataGrid"
-        MultiSelection="@(!_isEditMode)"
-        RowsPerPage="8" 
-        ColumnResizeMode="ResizeMode.Column"
-        Groupable="true"
-        Striped="true" 
-        Items="@FilteredElements" 
-        SortMode="SortMode.Multiple"
-        Filterable="true" 
-        QuickFilter="@_quickFilter" 
-        Hideable="true" 
-        SelectedItems="_selectedItems"      
-        SelectedItemsChanged="SelectedItemsChanged"
-        ReadOnly="@_readOnly"
-        EditMode="DataGridEditMode.Form"
-        EditTrigger="DataGridEditTrigger.Manual"
-        RowClick="@(args => OnRowClicked(args))"
-        CommittedItemChanges="OnCommitEdit">
-
-
+    <MudDataGrid T="TroopLeader"
+                 @ref="dataGrid"
+                 MultiSelection="@(!_isEditMode)"
+                 RowsPerPage="8"
+                 ColumnResizeMode="ResizeMode.Column"
+                 Groupable="true"
+                 Striped="true"
+                 Items="@FilteredElements"
+                 SortMode="SortMode.Multiple"
+                 Filterable="true"
+                 QuickFilter="@_quickFilter"
+                 Hideable="true"
+                 SelectedItems="_selectedItems"
+                 SelectedItemsChanged="SelectedItemsChanged"
+                 ReadOnly="@_readOnly"
+                 EditMode="DataGridEditMode.Form"
+                 EditTrigger="DataGridEditTrigger.Manual"
+                 RowClick="@(args => OnRowClicked(args))"
+                 CommittedItemChanges="OnCommitEdit">
         <ToolBarContent>
             <MudText Typo="Typo.h6">Troop Leader Dashboard</MudText>
             <MudSpacer />
             <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" Immediate="true"
-            AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
         </ToolBarContent>
+
         <Columns>
-            <SelectColumn T="RegisteredTroopLeader" Hidden="@(_isEditMode)" />
-            <PropertyColumn Property="x => x.LeaderId" Title="ID" Sortable="false" Filterable="false" />
+            <SelectColumn T="TroopLeader" Hidden="@(_isEditMode)" />
+            <PropertyColumn Property="x => x.LeaderId" Title="ID" Editable="false" Sortable="false" Filterable="false" />
+
             <TemplateColumn CellClass="justify-end">
                 <CellTemplate>
                     <MudStack Row>
                         <MudButton Size="@Size.Small"
-                        Variant="@Variant.Filled"
-                        Color="Color.Error"
-                        OnClick="@(() => SinglePersonClickedAsync(context.Item))"
-                        Disabled="@(singleButtonDisabled || _isEditMode)">
-                            Delete
+                                   Variant="@Variant.Filled"
+                                   Color="Color.Error"
+                                   OnClick="@(() => SinglePersonClickedAsync(context.Item))"
+                                   Disabled="@(singleButtonDisabled || _isEditMode)">
+                            Archive
                         </MudButton>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
+
+            <!-- Full Name - Editable with separate fields -->
             <TemplateColumn Title="Full Name" Sortable="true">
                 <CellTemplate Context="context">
                     <span style="white-space: nowrap">
-                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMinitial) ? "" : $" {context.Item.LeaderMinitial[0]}.")} {context.Item.LeaderLname}")
+                        @($"{context.Item.LeaderFname}{(string.IsNullOrWhiteSpace(context.Item.LeaderMname) ? "" : $" {context.Item.LeaderMname[0]}.")} {context.Item.LeaderLname}")
                     </span>
                 </CellTemplate>
+                <EditTemplate>
+                    <MudGrid>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="context.Item.LeaderFname"
+                                          Label="First Name"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          Disabled="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="context.Item.LeaderMname"
+                                          Label="Middle Name"
+                                          Variant="Variant.Outlined"
+                                          Disabled="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="context.Item.LeaderLname"
+                                          Label="Last Name"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          Disabled="true" />
+                        </MudItem>
+                    </MudGrid>
+                </EditTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.LeaderPosition"
-                            Title="Position"
-                            Sortable="false"
-                            Hidden="true"
-                            Filterable="false"
-                            Grouping="true"
-                            GroupByOrder="_groupOrder"
-                            GroupExpanded="_groupExpanded"
-                            Editable="true">
 
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.LeaderTorNT" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" Editable="true" />
-            <PropertyColumn Property="x => x.LeaderRegStatus" Title="Registration Status" Sortable="false" Filterable="false" Editable="true" />
-            <PropertyColumn Property="x => x.LeaderBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
-            <PropertyColumn Property="x => x.LeaderBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
-            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Editable="true" />
+            <!-- Position Column - Using cached positions -->
+            <TemplateColumn Title="Position" Sortable="true" Filterable="true">
+                <CellTemplate>
+                    @context.Item.LeaderPosition?.LeaderPositionName
+                </CellTemplate>
+                <EditTemplate Context="context">
+                    @{
+                        var item = context.Item;
+                    }
+                    <MudSelect T="int?"
+                               @bind-Value="item.LeaderPositionId"
+                               Label="Position"
+                               Variant="Variant.Outlined"
+                               Required="true">
+                        @foreach (var position in _availablePositions)
+                        {
+                            <MudSelectItem T="int?" Value="@position.LeaderPositionId">@position.LeaderPositionName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </EditTemplate>
+            </TemplateColumn>
+
+            <PropertyColumn Property="x => x.LeaderTroopNo" Title="Troop Number" Sortable="false" Filterable="false" Editable="false" />
+
+            <!-- Teaching or Non-Teaching Dropdown -->
+            <TemplateColumn Title="Teaching or Non-Teaching" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @context.Item.LeaderTorNt
+                </CellTemplate>
+                <EditTemplate>
+                    <MudSelect T="string" @bind-Value="context.Item.LeaderTorNt" Label="Teaching or Non-Teaching" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Teaching")">Teaching</MudSelectItem>
+                        <MudSelectItem Value="@("Non-Teaching")">Non-Teaching</MudSelectItem>
+                    </MudSelect>
+                </EditTemplate>
+            </TemplateColumn>
+
+            <!-- Registration Status Dropdown -->
+            <TemplateColumn Title="Registration Status" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @context.Item.LeaderRegStatus
+                </CellTemplate>
+                <EditTemplate>
+                    <MudSelect T="string" @bind-Value="context.Item.LeaderRegStatus" Label="Registration Status" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Existing Leader")">Existing Leader</MudSelectItem>
+                        <MudSelectItem Value="@("New Leader")">New Leader</MudSelectItem>
+                    </MudSelect>
+                </EditTemplate>
+            </TemplateColumn>
+
+            <!-- Beneficiary Input -->
+            <TemplateColumn Title="Beneficiary" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @context.Item.LeaderBeneficiary
+                </CellTemplate>
+                <EditTemplate>
+                    <MudTextField @bind-Value="context.Item.LeaderBeneficiary"
+                                  Label="Beneficiary"
+                                  Variant="Variant.Outlined"
+                                  Required="true" />
+                </EditTemplate>
+            </TemplateColumn>
+
+            <!-- Birth Date (Date Picker) -->
+            <TemplateColumn Title="Birth Date" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @context.Item.LeaderBirthdate?.ToString("MMMM dd, yyyy")
+                </CellTemplate>
+                <EditTemplate>
+                    <MudDatePicker @bind-Date="context.Item.LeaderBirthdate"
+                                   Label="Birth Date"
+                                   Variant="Variant.Outlined"
+                                   DateFormat="MMMM dd, yyyy" />
+                </EditTemplate>
+            </TemplateColumn>
+
+            <PropertyColumn Property="x => x.LeaderEmail" Title="Email" Editable="false" />
+            <PropertyColumn Property="x => x.LeaderRegisteredEmail" Title="Registered Email" Editable="false" />
+            <TemplateColumn Title="Role" Hidden="true">
+                <CellTemplate>
+                    @context.Item.UserRole
+                </CellTemplate>
+                <EditTemplate Context="context">
+                    <MudExpansionPanel Text="Advanced" HeaderClass="px-0" Gutters="false">
+                        <MudSelect T="string"
+                                   @bind-Value="context.Item.UserRole"
+                                   Label="Change Role"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+                            <MudSelectItem Value="@("Troop Leader")">Troop Leader</MudSelectItem>
+                        </MudSelect>
+                    </MudExpansionPanel>
+                </EditTemplate>
+            </TemplateColumn>
 
         </Columns>
+
         <PagerContent>
-            <MudDataGridPager T="RegisteredTroopLeader" Style="color: #25a129ff;" />
+            <MudDataGridPager T="TroopLeader" Style="color: #25a129ff;" />
             <div class="pager-addOn">
                 <MudButton Size="@Size.Small"
-                    Variant="@Variant.Filled"
-                    Color="Color.Error"
-                    OnClick="MultiplePersonClickedAsync"
-                    Disabled="@(multipleButtonDisabled || _isEditMode)">
-                        Delete Selected
+                           Variant="@Variant.Filled"
+                           Color="Color.Error"
+                           OnClick="MultiplePersonClickedAsync"
+                           Disabled="@(multipleButtonDisabled || _isEditMode)">
+                    Archive Selected
                 </MudButton>
                 <MudSwitch @bind-Value="@_isEditMode" Label="Edit Mode" LabelPlacement="Placement.Start" Color="Color.Primary" />
             </div>
@@ -105,33 +212,35 @@
     </MudDataGrid>
 
 </div>
+
 @code {
-    private RegisteredTroopLeader? _selectedPerson;
+    private TroopLeader? _selectedPerson;
     private HubConnection? _hubConnection;
 
     private bool multipleButtonDisabled = true;
     private bool singleButtonDisabled = false;
     private string _searchString = string.Empty;
     private bool isSubmitting = false;
-    public bool delete_switch { get; set; } = true;
-    private bool _isDeleteMode => delete_switch;
+    public bool Archive_switch { get; set; } = true;
+    private bool _isArchiveMode => Archive_switch;
     private bool _isEditMode;
     private bool _readOnly;
-    private MudDataGrid<RegisteredTroopLeader> dataGrid;
+    private MudDataGrid<TroopLeader> dataGrid;
+    private List<LeaderPosition> _availablePositions = new();
 
-    private IEnumerable<RegisteredTroopLeader> FilteredElements =>
-    RegisteredService.Data ?? Enumerable.Empty<RegisteredTroopLeader>();
+    private IEnumerable<TroopLeader> FilteredElements => (TroopLeaderService.Data ?? Enumerable.Empty<TroopLeader>())
+        .Where(x => x.ApplicationUser != null && x.UserRole == "Troop Leader" && x.ApplicationUser.AccountStatusId == 2);
 
-    private HashSet<RegisteredTroopLeader> _selectedItems = new();
+    private HashSet<TroopLeader> _selectedItems = new();
     private HashSet<int> _selectedIds = new();
 
-    private HashSet<RegisteredTroopLeader> GetSelectedItems()
+    private HashSet<TroopLeader> GetSelectedItems()
     {
-        if (RegisteredService.Data == null) return new();
-        return RegisteredService.Data.Where(x => _selectedIds.Contains(x.LeaderId)).ToHashSet();
+        if (TroopLeaderService.Data == null) return new();
+        return TroopLeaderService.Data.Where(x => _selectedIds.Contains(x.LeaderId)).ToHashSet();
     }
 
-    void SelectedItemsChanged(HashSet<RegisteredTroopLeader> selected)
+    void SelectedItemsChanged(HashSet<TroopLeader> selected)
     {
         if (_isEditMode)
         {
@@ -145,54 +254,85 @@
     }
 
     // Quick Filter function
-    private Func<RegisteredTroopLeader, bool> _quickFilter => x =>
+    private Func<TroopLeader, bool> _quickFilter => x =>
     {
         if (string.IsNullOrWhiteSpace(_searchString))
             return true;
 
         return (x.LeaderFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
             || (x.LeaderLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (x.LeaderEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (x.LeaderPosition?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+            || (x.LeaderEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
     };
 
     protected override async Task OnInitializedAsync()
     {
-        await RegisteredService.LoadDataAsync();
-        RegisteredService.OnChanged += HandleDataChanged;
-
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        try
         {
-            if (tableName == nameof(RegisteredTroopLeader))
+            await LoadAvailablePositions();
+
+            await TroopLeaderService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.LeaderPosition)
+                 .AsNoTracking()
+            );
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
             {
-                await RegisteredService.LoadDataAsync();  // This updates local cache and raises UI event
-            }
-        });
+                if (tableName == nameof(TroopLeader))
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        var currentIds = _selectedItems.Select(x => x.LeaderId).ToHashSet();
 
-        await _hubConnection.StartAsync();
+                        await TroopLeaderService.LoadDataAsync(q =>
+                            q.Include(t => t.ApplicationUser)
+                             .Include(t => t.LeaderPosition)
+                             .AsNoTracking()
+                        );
 
+                        if (TroopLeaderService.Data != null)
+                        {
+                            _selectedItems = TroopLeaderService.Data
+                                .Where(x => currentIds.Contains(x.LeaderId))
+                                .ToHashSet();
+
+                            multipleButtonDisabled = !_selectedItems.Any();
+                            singleButtonDisabled = _selectedItems.Any();
+                        }
+
+                        StateHasChanged();
+                    });
+                }
+            });
+
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error initializing page: {ex.Message}", Severity.Error);
+        }
     }
 
     private void HandleDataChanged()
     {
-        if (RegisteredService.Data != null && _selectedIds.Any())
+        if (TroopLeaderService.Data != null && _selectedIds.Any())
         {
-            _selectedItems = RegisteredService.Data
+            _selectedItems = TroopLeaderService.Data
                 .Where(x => _selectedIds.Contains(x.LeaderId))
                 .ToHashSet();
         }
-        _selectedItems = new HashSet<RegisteredTroopLeader>(_selectedItems);
-        InvokeAsync(StateHasChanged); // Refresh UI when data changes
+        _selectedItems = new HashSet<TroopLeader>(_selectedItems);
+        InvokeAsync(StateHasChanged);
     }
 
     public async void Dispose()
     {
-        RegisteredService.OnChanged -= HandleDataChanged;
+        TroopLeaderService.OnChanged -= HandleDataChanged;
 
         if (_hubConnection is not null)
         {
@@ -200,69 +340,55 @@
         }
     }
 
-  
-    private async Task DeletePerson(RegisteredTroopLeader person)
+    private async Task ArchivePerson(TroopLeader person)
+    {
+        try
         {
-            if (person == null) return;
+            // Make sure to include ApplicationUser when loading TroopLeader data
+            await TroopLeaderService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.LeaderPosition)
+            );
 
-            try
+            // Refresh the person object to get the latest data
+            var updatedPerson = TroopLeaderService.Data?
+                .FirstOrDefault(t => t.LeaderId == person.LeaderId);
+
+            if (updatedPerson?.ApplicationUser != null)
             {
-                var account = await GetTroopLeaderData.RegisteredTroopLeaders
-                    .FirstOrDefaultAsync(a => a.LeaderId == person.LeaderId);
+                updatedPerson.ApplicationUser.AccountStatusId = 4; // Rejected
 
-                if (account != null)
-                {
-                    // Find the Identity user by email
-                    var identityUser = await UserManager.FindByEmailAsync(account.LeaderEmail);
+                // Update using TroopLeaderService - this will handle the user update through EF tracking
+                await TroopLeaderService.Update(updatedPerson);
 
-                    if (identityUser != null)
-                    {
-                        // Remove roles
-                        var roles = await UserManager.GetRolesAsync(identityUser);
-                        if (roles.Any())
-                        {
-                            await UserManager.RemoveFromRolesAsync(identityUser, roles);
-                        }
-
-                        // Delete identity user
-                        await UserManager.DeleteAsync(identityUser);
-                    }
-
-                    // Remove the troop leader record
-                    GetTroopLeaderData.RegisteredTroopLeaders.Remove(account);
-                }
-
-                await GetTroopLeaderData.SaveChangesAsync();
-
-                await RegisteredService.NotifyChangedAsync();
-
-                Snackbar.Add(
-                    $"{person.LeaderFname} {person.LeaderMinitial} {person.LeaderLname} has been removed successfully!",
-                    Severity.Success
-                );
+                Snackbar.Add($"Success: {person.LeaderFname} {person.LeaderLname} was moved to Archive.", Severity.Success);
             }
-            catch (Exception ex)
+            else
             {
-                Snackbar.Add($"Error deleting {person.LeaderFname} {person.LeaderLname}: {ex.Message}", Severity.Error);
+                Snackbar.Add($"User not found for {person.LeaderFname} {person.LeaderLname}", Severity.Warning);
             }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating account status: {ex.Message}", Severity.Error);
+        }
     }
 
-    private async Task ShowConfirmationDialog(bool isSingle, bool isDelete)
+    private async Task ShowArchiveDialog(bool isSingle, bool isArchive)
     {
-
         string message;
         string title;
 
         if (isSingle && _selectedPerson != null)
         {
-            title = "Confirm Deletion";
-            message =  $"Are you sure you want to delete the registration request of <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b> as a <b>{_selectedPerson.LeaderPosition}</b>?";
+            title = "Confirm Archive";
+            message = $"Are you sure you want to Archive <b>{_selectedPerson.LeaderFname} {_selectedPerson.LeaderLname}</b>?";
         }
         else if (!isSingle && _selectedItems.Any())
         {
-            title = "Confirm Multiple Deletions";
-            var names = string.Join("</li><li>", _selectedItems.Select(p => $"{p.LeaderFname} {p.LeaderLname}"));
-            message = $"Are you sure you want to delete these registration requests?<ul><li>{names}</li></ul>";
+            title = "Confirm Multiple Archive";
+            var names = string.Join("</li><li style=\"padding: 5px 0;\">", _selectedItems.Select(p => $"{p.LeaderFname} {p.LeaderLname}"));
+            message = $"Are you sure you want to Archive these selected people?<ul style=\"padding-left: 20px; margin: 10px 0;\"><li style=\"padding: 5px 0;\">{names}</li></ul>";
         }
         else
         {
@@ -270,50 +396,156 @@
         }
 
         var parameters = new DialogParameters {
-        { "Content", message },
-        { "IsDelete", isDelete }  // Pass the delete mode to the dialog
+            { "Content", message },
+            { "IsSingle", isSingle }
         };
 
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
 
-        var dialog = DialogService.Show<ConfirmationDialog>(title, parameters, options);
+        var dialog = DialogService.Show<ArchiveDialog>(title, parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled)
         {
             if (isSingle)
             {
-                if (isDelete) await DeletePerson(_selectedPerson);
+                if (isArchive) await ArchivePerson(_selectedPerson);
             }
             else
             {
                 foreach (var person in _selectedItems.ToList())
                 {
-                    if (isDelete) await DeletePerson(person);
+                    if (isArchive) await ArchivePerson(person);
                 }
             }
         }
-
     }
 
-    private async Task SinglePersonClickedAsync(RegisteredTroopLeader person)
+    private async Task SinglePersonClickedAsync(TroopLeader person)
     {
-        _selectedPerson = person; // Store the selected person
-        await ShowConfirmationDialog(isSingle: true, isDelete: delete_switch);
+        _selectedPerson = person;
+        await ShowArchiveDialog(isSingle: true, isArchive: Archive_switch);
     }
 
     private async Task MultiplePersonClickedAsync()
     {
         if (_selectedItems == null || !_selectedItems.Any()) return;
-        await ShowConfirmationDialog(isSingle: false, isDelete: delete_switch);
+        await ShowArchiveDialog(isSingle: false, isArchive: Archive_switch);
     }
 
-    private async Task OnCommitEdit(RegisteredTroopLeader item)
+    private async Task OnCommitEdit(TroopLeader item)
     {
         try
         {
-            await RegisteredService.Update(item);
-            Snackbar.Add("Changes saved successfully!", Severity.Success);
+            var existingEntity = await GetTroopLeaderData.TroopLeaders
+                .Include(t => t.ApplicationUser)
+                .FirstOrDefaultAsync(t => t.LeaderId == item.LeaderId);
+
+            if (existingEntity == null)
+            {
+                Snackbar.Add("Error: Troop leader not found in database", Severity.Error);
+                return;
+            }
+
+            // ✅ STEP 1: Apply normal updates first
+            existingEntity.LeaderFname = item.LeaderFname;
+            existingEntity.LeaderMname = item.LeaderMname;
+            existingEntity.LeaderLname = item.LeaderLname;
+            existingEntity.LeaderPositionId = item.LeaderPositionId;
+            existingEntity.LeaderTorNt = item.LeaderTorNt;
+            existingEntity.LeaderRegStatus = item.LeaderRegStatus;
+            existingEntity.LeaderBeneficiary = item.LeaderBeneficiary;
+            existingEntity.LeaderBirthdate = item.LeaderBirthdate;
+            existingEntity.LeaderEmail = item.LeaderEmail;
+            existingEntity.LeaderTroopNo = item.LeaderTroopNo;
+
+            // ✅ STEP 2: Handle role change after general updates
+            if (existingEntity.UserRole != item.UserRole)
+            {
+                var parameters = new DialogParameters
+                {
+                    ["Content"] =
+                      $"Are you sure you want to change the role of <b>{item.LeaderFname} {item.LeaderLname}</b> " +
+                      $"to '<b>{item.UserRole}</b>'? This will remove all troop-specific data.",
+                    ["IsConfirmRoleChange"] = true
+                };
+
+                var options = new DialogOptions
+                {
+                    CloseButton = false,
+                    MaxWidth = MaxWidth.Small,
+                    FullWidth = true,
+                };
+
+                var dialog = DialogService.Show<ConfirmationDialog>("Confirm Role Change", parameters, options);
+                var result = await dialog.Result;
+
+                if (result.Canceled)
+                {
+                    Snackbar.Add("Role change canceled.", Severity.Info);
+
+                    await TroopLeaderService.LoadDataAsync(q =>
+                        q.Include(t => t.ApplicationUser)
+                         .Include(t => t.LeaderPosition)
+                         .AsNoTracking());
+
+                    StateHasChanged();
+                    return;
+                }
+
+                // 🔥 Dangerous part: clear troop data AFTER normal updates
+                existingEntity.UserRole = item.UserRole;
+                existingEntity.LeaderTorNt = null;
+                existingEntity.LeaderRegStatus = null;
+                existingEntity.LeaderBeneficiary = null;
+                existingEntity.LeaderTroopNo = null;
+
+                await GetTroopLeaderData.SaveChangesAsync();
+
+                if (existingEntity.UserRole == "Admin")
+                {
+                    var troopsWithLeader = await GetTroopLeaderData.TroopInformations
+                        .Where(t => t.TroopLeaderId == existingEntity.LeaderId)
+                        .ToListAsync();
+
+                    foreach (var troop in troopsWithLeader)
+                    {
+                        troop.TroopLeaderId = null; // Remove reference
+                    }
+
+                    if (troopsWithLeader.Any())
+                    {
+                        await GetTroopLeaderData.SaveChangesAsync();
+                        Snackbar.Add($"Removed {troopsWithLeader.Count} troop assignments from {existingEntity.LeaderFname}.", Severity.Info);
+                    }
+                }
+
+
+
+                // Update roles in Identity
+                var user = await UserManager.FindByIdAsync(existingEntity.ApplicationUser.Id);
+                if (user != null)
+                {
+                    var oldRoles = await UserManager.GetRolesAsync(user);
+                    if (oldRoles.Any())
+                        await UserManager.RemoveFromRolesAsync(user, oldRoles);
+                    await UserManager.AddToRoleAsync(user, existingEntity.UserRole);
+                }
+
+                Snackbar.Add($"Role successfully changed to {existingEntity.UserRole}.", Severity.Success);
+            }
+            else
+            {
+                // Only save once if no role change occurred
+                await GetTroopLeaderData.SaveChangesAsync();
+                Snackbar.Add("Changes saved successfully!", Severity.Success);
+            }
+
+            // ✅ STEP 3: Refresh data grid
+            await TroopLeaderService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.LeaderPosition)
+                 .AsNoTracking());
         }
         catch (Exception ex)
         {
@@ -321,15 +553,45 @@
         }
     }
 
-    private async Task OnRowClicked(DataGridRowClickEventArgs<RegisteredTroopLeader> args)
+    private async Task OnRowClicked(DataGridRowClickEventArgs<TroopLeader> args)
     {
-        if (_isEditMode)
+        if (_isEditMode && !isSubmitting)
         {
-            await dataGrid.SetEditingItemAsync(args.Item);
+            try
+            {
+                isSubmitting = true;
+                await InvokeAsync(async () =>
+                {
+                    await dataGrid.SetEditingItemAsync(args.Item);
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error entering edit mode: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
     }
 
-    private bool _groupByPosition = true; // enable grouping on load
-    private int _groupOrder = 0;              // group priority
-    private bool _groupExpanded = true;       // whether it's expanded initially
+    private async Task LoadAvailablePositions()
+    {
+        try
+        {
+            _availablePositions = await GetTroopLeaderData.LeaderPositions
+                .AsNoTracking()
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading positions: {ex.Message}", Severity.Error);
+        }
+    }   
+
+    private bool _groupByPosition = true;
+    private int _groupOrder = 0;
+    private bool _groupExpanded = true;
 }

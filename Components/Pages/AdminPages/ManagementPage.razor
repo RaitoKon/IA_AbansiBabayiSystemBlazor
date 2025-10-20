@@ -1,0 +1,187 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+
+@page "/managementPage"
+
+@layout Layout.ThemedLayout
+
+@inject TableDataService<ApplicationUser> UserService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext UserInfoFromDB
+@inject ILogger<ManagementPage> Logger
+
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="hero-content">
+    <PageTitle>Data Profiling Dashboard</PageTitle>
+
+    <MudContainer Class="pa-0">
+        <!-- Summary Cards -->
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-6 rounded-xl justify-center align-content-center" Height="10rem" Elevation="4">
+                    <MudText Typo="Typo.h6" Style="font-weight: 400;" Color="Color.Surface">Platform Users</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.h3" Style="font-weight: 600" Color="Color.Primary">@_platformUsers</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-6 rounded-xl justify-center align-content-center" Height="10rem" Elevation="4">
+                    <MudText Typo="Typo.h6" Style="font-weight: 400;" Color="Color.Surface">Troop Leaders</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.h3" Style="font-weight: 600" Color="Color.Primary">@_troopLeaders</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-6 rounded-xl justify-center align-content-center" Height="10rem" Elevation="4">
+                    <MudText Typo="Typo.h6" Style="font-weight: 400;" Color="Color.Surface">Scouts</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.h3" Style="font-weight: 600" Color="Color.Primary">@_scouts</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-6 rounded-xl justify-center align-content-center" Height="10rem" Elevation="4">
+                    <MudText Typo="Typo.h6" Style="font-weight: 400;" Color="Color.Surface">Troops</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.h3" Style="font-weight: 600" Color="Color.Primary">@(_troops)</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Charts Section -->
+        <MudGrid Class="mt-6" Spacing="3">
+            <!-- Pie Chart -->
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-6 rounded-xl" Elevation="4">
+                    <MudText Typo="Typo.h6" GutterBottom>Troop Role Distribution</MudText>
+                    <MudChart ChartType="ChartType.Pie"
+                              Style="justify-self: center;"
+                              InputData="@CategoryData"
+                              InputLabels="@CategoryLabels"
+                              ChartOptions="@PieOptions"
+                              Height="300px" 
+                              />
+                </MudPaper>
+            </MudItem>
+
+            <!-- Stacked Bar Chart -->
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-6 rounded-xl" Elevation="4">
+                    <MudText Typo="Typo.h6" GutterBottom>Scouts Registered per Month</MudText>
+                    <MudChart ChartType="ChartType.StackedBar"
+                              Style="justify-self: center;"
+                              ChartSeries="@_series"
+                              XAxisLabels="@_xAxisLabels"
+                              LegendPosition="Position.Bottom"
+                              Height="300px" 
+                              />
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</div>
+
+@code {
+    private ApplicationUser currentUser;
+    private string currentRole;
+    private string errorMessage;
+    private bool isLoading = true;
+
+    private int _platformUsers = 0;
+    private int _troopLeaders = 0;
+    private int _scouts = 0;
+    private int _troops = 0;
+
+    private string[] scoutRole = { "Twinklers", "Star", "Junior", "Senior", "Cadet" };
+
+    // Chart data
+    private List<ChartSeries> _series = new();
+    private string[] _xAxisLabels = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    private string[] CategoryLabels;
+    private double[] CategoryData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated ?? false)
+            {
+                var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role);
+                currentRole = roleClaim?.Value ?? "No role assigned.";
+
+                // ✅ Load all counts
+                await LoadPlatformUsersCount();
+                await LoadTroopCount();
+
+            }
+            else
+            {
+                errorMessage = "User is not authenticated.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Something went wrong: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPlatformUsersCount()
+    {
+        try
+        {
+            await UserService.LoadDataAsync();
+            _platformUsers = UserService.Data.Count;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error counting platform users via TableDataService.");
+            _platformUsers = 0;
+        }
+    }
+
+    private async Task LoadTroopCount()
+    {
+        try
+        {
+            await TroopInformationService.LoadDataAsync();
+            _troops = TroopInformationService.Data.Count;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error counting Troops via TableDataService.");
+            _troops = 0;
+        }
+    }
+
+    private ChartOptions PieOptions = new()
+    {
+        ChartPalette = new[]
+        {
+            "#f467a4", // Twinklers
+            "#f6e03a", // Star
+            "#fdbd23", // Junior
+            "#ff8546", // Senior
+            "#a821e5"  // Cadet
+        }
+    };
+}

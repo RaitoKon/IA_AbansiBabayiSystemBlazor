@@ -1,0 +1,488 @@
+﻿
+@using Microsoft.AspNetCore.Identity
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Services
+
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
+@inject AuthenticatorService AuthenticatorService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopMemberScoutLevel> TroopMemberScoutLevelService
+@inject TableDataService<LeaderPosition> LeaderPositionService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+@page "/userProfilePage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin, Troop Leader, Scout")]
+
+<div class="hero-content">
+    <MudContainer Gutters="false">
+        <!-- Header Section -->
+        <MudPaper Class="profile-header pa-6 mb-6" Elevation="8">
+            <MudGrid Spacing="3">
+                <MudItem xs="12">
+                    <MudAvatar Size="Size.Large" Color="Color.Primary" Class="elevation-4">
+                        <MudIcon Icon="@GetProfileIcon()" Size="Size.Large" />
+                    </MudAvatar>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudItem Class="d-flex align-center mb-2">
+                        <MudText Typo="Typo.h4" Color="Color.Primary">
+                            @GetWelcomeMessage()
+                        </MudText>
+                        @if (isMember && troopMemberAccount != null && troopMemberAccount.UserRole == "Scout" && GetScoutScoutNo().HasValue)
+                        {
+                            <MudText Typo="Typo.subtitle1" Class="ml-4" Style="color:darkgray">
+                                Scout No. @GetScoutScoutNo().Value
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudChip T="string" Color="@GetRoleColor()" Icon="@GetRoleIcon()" Size="Size.Small" Variant="Variant.Filled">
+                        @GetRoleChip()
+                    </MudChip>
+                    @if (isMember && troopMemberAccount != null && troopMemberAccount.UserRole == "Scout" && !string.IsNullOrEmpty(GetScoutLevel()))
+                    {
+                        <MudChip T="string" Style="@GetScoutLevelColor()" Size="Size.Small" Variant="Variant.Filled" Class="ml-2">
+                            @GetScoutLevel()
+                        </MudChip>
+                    }
+                    else if (isLeader && troopLeaderAccount != null && !string.IsNullOrEmpty(GetLeaderPosition()))
+                    {
+                        <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled" Class="ml-2">
+                            @GetLeaderPosition()
+                        </MudChip>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Profile Form Section -->
+        <MudPaper Class="profile-content pa-6" Elevation="4">
+            @if (isLoading)
+            {
+                <div class="loading-container">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+                    <MudText Typo="Typo.h6" Class="mt-4" Color="Color.Primary">Loading your profile...</MudText>
+                </div>
+            }
+            else if (currentUser != null)
+            {
+                <EditForm Model="@currentUser">
+                    <MudGrid Spacing="3">
+                        
+                        @if (isLeader && troopLeaderAccount != null)
+                        {
+                            <!-- Leader Profile Fields -->
+                            <MudItem xs="12" Class="d-flex align-center">
+                                <MudText Typo="Typo.h6" Class="mb-3 section-title">Personal Information</MudText>
+                                <MudSpacer />
+                                <MudText Typo="Typo.subtitle2" Class="mb-3 section-title">
+                                    Date Registered: @(troopLeaderAccount?.LeaderDateRegistered?.ToString("MMMM dd, yyyy") ?? "Error: Contact Administrator")
+                                </MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderFname" 
+                                             Label="First Name" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             AdornmentIcon="@Icons.Material.Filled.Person"
+                                             Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderMname"
+                                              Label="Middle Name"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderLname" 
+                                             Label="Last Name" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             AdornmentIcon="@Icons.Material.Filled.Person"
+                                             Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderTorNt"
+                                              Label="Teaching Or Non-Teaching"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderRegStatus"
+                                              Label="Registration Status"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderBirthdate"
+                                              Label="Birth Date"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderBeneficiary"
+                                              Label="Beneficiary"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderEmail"
+                                              Label="Email"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              AdornmentIcon="@Icons.Material.Filled.Person"
+                                              Class="mb-3" />
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 section-title">Account Information</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="12">
+                                <MudTextField @bind-Value="troopLeaderAccount.LeaderRegisteredEmail" 
+                                             Label="Email Address" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             Disabled="true"
+                                             AdornmentIcon="@Icons.Material.Filled.Email"
+                                             Class="mb-3" />
+                            </MudItem>
+                        }
+                        else if (isMember && troopMemberAccount != null)
+                        {
+                            <!-- Member Profile Fields -->
+                            <MudItem xs="12" Class="d-flex align-center">
+                                <MudText Typo="Typo.h6" Class="mb-3 section-title">Personal Information</MudText>
+                                <MudSpacer/>
+                                <MudText Typo="Typo.subtitle2" Class="mb-3 section-title">
+                                    Date Registered: @(troopMemberAccount?.TroopMemDateRegistered?.ToString("MMMM dd, yyyy") ?? "Error: Contact Administrator")
+                                </MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemFname" 
+                                             Label="First Name" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemMname"
+                                              Label="Middle Name"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemLname" 
+                                             Label="Last Name" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemBirthdate"
+                                              Label="Birth Date"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemGradeOrYear"
+                                              Label="Grade Or Year"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemRegStatus"
+                                              Label="Registration Status"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemBeneficiary"
+                                              Label="Beneficiary"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemEmail"
+                                              Label="Email"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              Class="mb-3" />
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 section-title">Account Information</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="troopMemberAccount.TroopMemRegisteredEmail" 
+                                             Label="Registered Email" 
+                                             Variant="Variant.Outlined"
+                                             Required="true"
+                                             Disabled="true"
+                                             AdornmentIcon="@Icons.Material.Filled.Email"
+                                             Class="mb-3" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <!-- No Profile Data -->
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+                                    <MudAlertTitle>Profile Not Found</MudAlertTitle>
+                                    No linked troop profile data was found for your account.
+                                </MudAlert>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </EditForm>
+            }
+            else
+            {
+                <!-- Error State -->
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+                    <MudAlertTitle>Unable to Load Profile</MudAlertTitle>
+                    We couldn't load your profile information. Please try again later.
+                </MudAlert>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="ReturnToHome"
+                           StartIcon="@Icons.Material.Filled.Home"
+                           Class="mt-4">
+                    Return to Home
+                </MudButton>
+            }
+        </MudPaper>
+
+        <!-- Additional Options Card -->
+        @if (!isLoading && currentUser != null)
+        {
+            <MudPaper Class="mt-4 pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">Account Options</MudText>
+                <MudStack Spacing="2">
+                    <MudButton Variant="Variant.Text" 
+                              Color="Color.Warning" 
+                              StartIcon="@Icons.Material.Filled.Lock"
+                              OnClick="NavigateToChangePassword"
+                              Size="Size.Small">
+                        Change Password
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+    </MudContainer>
+</div>
+
+@code {
+    private ApplicationUser? currentUser;
+    private TroopLeader? troopLeaderAccount;
+    private TroopMember? troopMemberAccount;
+    private bool isLeader = false;
+    private bool isMember = false;
+    private bool isLoading = true;
+
+    // Store initial values to track changes
+    private ApplicationUser? initialUserState;
+    private TroopLeader? initialLeaderState;
+    private TroopMember? initialMemberState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await AuthenticatorService.GetCurrentUserAsync();
+
+        if (currentUser == null)
+        {
+            NavigationManager.NavigateTo("/");
+            return;
+        }
+
+        if (currentUser.MustChangePassword)
+        {
+            NavigationManager.NavigateTo("/forceResetPasswordPage", true);
+            return;
+        }
+
+        await TroopLeaderService.LoadDataAsync();
+        await TroopMemberService.LoadDataAsync();
+        await TroopMemberScoutLevelService.LoadDataAsync();
+        await LeaderPositionService.LoadDataAsync();
+
+        troopLeaderAccount = TroopLeaderService.Data.FirstOrDefault(t => t.ApplicationUserId == currentUser.Id);
+        troopMemberAccount = TroopMemberService.Data.FirstOrDefault(t => t.ApplicationUserId == currentUser.Id);
+
+        if (troopLeaderAccount != null)
+        {
+            isLeader = true;
+            // Store initial state for change tracking
+            initialLeaderState = new TroopLeader
+            {
+                LeaderFname = troopLeaderAccount.LeaderFname,
+                LeaderLname = troopLeaderAccount.LeaderLname
+            };
+        }
+        else if (troopMemberAccount != null)
+        {
+            isMember = true;
+            // Store initial state for change tracking
+            initialMemberState = new TroopMember
+            {
+                TroopMemFname = troopMemberAccount.TroopMemFname,
+                TroopMemMname = troopMemberAccount.TroopMemMname
+            };
+        }
+        else
+        {
+            Snackbar.Add("No linked troop profile found.", Severity.Warning);
+        }
+
+        // Store initial user state
+        initialUserState = new ApplicationUser
+        {
+            Email = currentUser.Email,
+            PhoneNumber = currentUser.PhoneNumber
+        };
+
+        isLoading = false;
+    }
+
+    private string GetWelcomeMessage()
+    {
+        if (isLeader && troopLeaderAccount != null)
+        {
+            return $"Welcome, {troopLeaderAccount.LeaderFname}!";
+        }
+        else if (isMember && troopMemberAccount != null)
+        {
+            return $"Welcome, {troopMemberAccount.TroopMemFname}!";
+        }
+        return "Welcome to Your Profile!";
+    }
+
+    private string GetProfileIcon()
+    {
+        return isLeader ? Icons.Material.Filled.SupervisorAccount : Icons.Material.Filled.Person;
+    }
+
+    private string GetRoleChip()
+    {
+        if (isLeader && troopLeaderAccount != null)
+        {
+            return troopLeaderAccount.UserRole;
+        }
+        else if (isMember && troopMemberAccount != null)
+        {
+            return troopMemberAccount.UserRole;
+        }
+
+        return "Unknown Role: Contact Administrator"; // Default value
+    }
+
+    private Color GetRoleColor()
+    {
+        string role = GetRoleChip()?.ToLower() ?? "";
+
+        return role switch
+        {
+            "admin" => Color.Dark,
+            "troop leader"  => Color.Primary,
+            "scout" => Color.Secondary,
+            _ => isLeader ? Color.Primary : Color.Secondary // Fallback based on boolean flags
+        };
+    }
+
+    private string GetScoutLevelColor()
+    {
+        string scoutLevel = GetScoutLevel()?.ToLower() ?? "";
+
+        return scoutLevel?.ToLower() switch
+        {
+            "twinklers" => "background-color: #f467a4; color: #ffffff;",
+            "star" => "background-color: #eed300; color: #ffffff;",
+            "junior" => "background-color: #fdbd23; color: #ffffff;",
+            "senior" => "background-color: #ff8546; color: #ffffff;",
+            "cadet" => "background-color: #a821e5; color: #ffffff;",
+            "troop leader" => "background-color: #0d5d10; color: #ffffff;",
+            _ => "background-color: #e0e0e0; color: #000000;"
+        };
+    }
+
+    private string GetRoleIcon()
+    {
+        string role = GetRoleChip()?.ToLower() ?? "";
+
+        return role switch
+        {
+            "admin" => Icons.Material.Filled.AdminPanelSettings,
+            "troop leader" => Icons.Material.Filled.SupervisorAccount,
+            "scout" => Icons.Material.Filled.Person,
+            _ => isLeader ? Icons.Material.Filled.SupervisorAccount : Icons.Material.Filled.Person
+        };
+    }
+
+    private string GetScoutLevel()
+    {
+        if (isMember && troopMemberAccount != null)
+        {
+            // Get the scout level based on the TroopMemberScoutLevel ID
+            var scoutLevel = TroopMemberScoutLevelService.Data
+                .FirstOrDefault(sl => sl.TroopMemScoutLevelId == troopMemberAccount.TroopMemScoutLevelId);
+
+            return scoutLevel?.TroopMemScoutLevel ?? "No Level Assigned";
+        }
+
+        return string.Empty;
+    }
+
+    private int? GetScoutScoutNo()
+    {
+        if (isMember && troopMemberAccount != null)
+        {
+            return troopMemberAccount.TroopMemScoutNumber;
+        }
+        return null;
+    }
+
+    private string GetLeaderPosition()
+    {
+        if (isLeader && troopLeaderAccount != null)
+        {
+            // Get the leader position based on the LeaderPosition ID
+            var leaderPosition = LeaderPositionService.Data
+                .FirstOrDefault(lp => lp.LeaderPositionId == troopLeaderAccount.LeaderPositionId);
+
+            return leaderPosition?.LeaderPositionName ?? "No Position Assigned";
+        }
+
+        return string.Empty;
+    }
+
+    private void NavigateToChangePassword()
+    {
+
+    }
+
+    private void ReturnToHome()
+    {
+        NavigationManager.NavigateTo("/landingPage");
+    }
+}

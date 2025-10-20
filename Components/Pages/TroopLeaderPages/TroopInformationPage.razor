@@ -1,18 +1,33 @@
-﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+﻿
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor.Services
 @using IA_AbansiBabayiSystemBlazor.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.SignalR.Client
 
-@inject TableDataService<RegisteredTroopLeader> RegisteredTroopLeaderService
-@inject TableDataService<RegisteredTroopMember> RegisteredTroopMemberService
-@inject TableDataService<TroopCluster> TroopClusterService
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject TableDataService<TroopDetail> TroopDetailsService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopMember> TroopMemberService
+@inject AuthenticatorService AuthenticatorService
+@inject ISnackbar Snackbar
+@inject ILogger<TroopInformationPage> Logger
+@inject NavigationManager NavigationManager
 
 @page "/troopInformationFormPage"
 @layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Troop Leader")]
 
 <div class="hero-content">
     <MudPaper Class="pa-6 rounded-lg shadow-md">
 
-        <MudText Typo="Typo.h5" Class="mb-4">Troop Information Form</MudText>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <MudText Typo="Typo.h5">Troop Information Form</MudText>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <MudText Typo="Typo.body1">Edit Mode</MudText>
+                <MudSwitch T="bool" @bind-Value="isEditMode" Color="Color.Primary" Size="Size.Large" />
+            </div>
+        </div>
 
         <MudDivider />
 
@@ -21,174 +36,456 @@
             <MudText Typo="Typo.h5" Style="font-weight:400;"> Iloilo Girl Scout Council</MudText>
         </MudItem>
 
-        <MudText Typo="Typo.h6" Class="mb-2">Troop</MudText>
-        <MudGrid>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Troop Name" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Age Level" FullWidth="true" />
-            </MudItem>
+        <MudText Typo="Typo.h6" Style="font-weight:700;" Class="mb-2">Troop No @troopInformation.TroopNo</MudText>
 
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Troop Address" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Sponsoring Group" FullWidth="true" />
-            </MudItem>
-
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Troop Tel. No." FullWidth="true" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="District Committee Name / Municipality" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField T="string" Label="Complete Mailing Address" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Barangay Committee Name" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="6">
-                <MudTextField T="string" Label="Troop Birthday" FullWidth="true" />
-            </MudItem>
-
-            <MudItem xs="6">
-                <MudSelect T="string" Label="Troop Type" FullWidth="true">
-                    <MudSelectItem Value="@("School Based")">School Based</MudSelectItem>
-                    <MudSelectItem Value="@("Community Based")">Community Based</MudSelectItem>
-                </MudSelect>
-
-            </MudItem>
-            <MudItem xs="6">
-                <MudSelect T="string" Label="Troop Status" FullWidth="true">
-                    <MudSelectItem Value="@("Re-Registered")">Re-Registered</MudSelectItem>
-                    <MudSelectItem Value="@("New")">New</MudSelectItem>
-                </MudSelect>
-
-            </MudItem>
-
-        </MudGrid>
+        <!-- Troop Form -->
+        <MudForm @ref="_form" Model="@troopFormModel">
+            <MudGrid>
+                <MudItem xs="4">
+                    <MudTextField T="string" Immediate="true" Label="Troop Name"
+                                  @bind-Value="troopFormModel.TroopName"
+                                  Required="true"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Scout Level"
+                               @bind-Value="troopFormModel.TroopAgeLevel"
+                               Required="true"
+                               Disabled="@(!isEditMode)">
+                        <MudSelectItem Value="@("Twinklers")">Twinklers</MudSelectItem>
+                        <MudSelectItem Value="@("Star")">Star </MudSelectItem>
+                        <MudSelectItem Value="@("Junior")">Junior </MudSelectItem>
+                        <MudSelectItem Value="@("Senior")">Senior </MudSelectItem>
+                        <MudSelectItem Value="@("Cadet")">Cadet </MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField T="string" Label="Troop Address"
+                                  @bind-Value="troopFormModel.TroopAddress"
+                                  Required="true"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField T="string" Label="Sponsoring Group"
+                                  @bind-Value="troopFormModel.TroopSponsoringGroup"
+                                  Required="false"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField T="int?" Label="Troop Telephone No."
+                                  @bind-Value="troopFormModel.TroopTelNo"
+                                  Required="false"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudTextField T="string" Label="Troop Mailing Address"
+                                  @bind-Value="troopFormModel.TroopMailingAddress"
+                                  Required="false"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Troop District Committee"
+                                  @bind-Value="troopFormModel.TroopDistrictCommittee"
+                                  Required="false"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Troop Barangay Committee"
+                                  @bind-Value="troopFormModel.TroopBarangayCommittee"
+                                  Required="false"
+                                  Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudDatePicker @bind-Date="troopFormModel.TroopBirthdate"
+                                   Label="Birth Date"
+                                   Variant="Variant.Text"
+                                   DateFormat="MMMM dd, yyyy"
+                                   Required="true"
+                                   Disabled="@(!isEditMode)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Troop Type"
+                               @bind-Value="troopFormModel.TroopType"
+                               Required="true"
+                               Disabled="@(!isEditMode)">
+                        <MudSelectItem Value="@("School Based")">School Based</MudSelectItem>
+                        <MudSelectItem Value="@("Community Based")">Community Based</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Troop Status"
+                               @bind-Value="troopFormModel.TroopStatus"
+                               Required="true"
+                               Disabled="@(!isEditMode)">
+                        <MudSelectItem Value="@("Existing Troop")">Existing Troop</MudSelectItem>
+                        <MudSelectItem Value="@("New Troop")">New Troop</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
 
         <MudDivider Class="my-4" />
-
-        <!-- Leaders -->
+        <!-- Leaders Table -->
         <MudText Typo="Typo.h6" Class="mb-2">Troop Leaders</MudText>
-        <MudTable T="RegisteredTroopLeader" Items="@TroopLeaderData" Bordered="true">
+        <MudTable T="TroopLeader" Items="@TroopLeaders" Bordered="true" Hover="true" Striped="true">
             <HeaderContent>
                 <MudTh>Position</MudTh>
-                <MudTh>Teaching or Non-Teaching</MudTh>
-                <MudTh>Registration Status</MudTh>
                 <MudTh>Full Name (Last, First, M.I.)</MudTh>
+                <MudTh>Teaching/Non-Teaching</MudTh>
+                <MudTh>Registration Status</MudTh>
                 <MudTh>Birthdate</MudTh>
                 <MudTh>Beneficiary</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.LeaderPosition</MudTd>
-                <MudTd>@context.LeaderTorNT</MudTd>
+                <MudTd>@context.LeaderPosition.LeaderPositionName</MudTd>
+                <MudTd>@($"{context.LeaderLname}, {context.LeaderFname} {context.LeaderMname}")</MudTd>
+                <MudTd>@context.LeaderTorNt</MudTd>
                 <MudTd>@context.LeaderRegStatus</MudTd>
-                <MudTd>
-                    @($"{context.LeaderLname?.Trim()}, {context.LeaderFname}{(string.IsNullOrWhiteSpace(context.LeaderMinitial) ? "" : $" {context.LeaderMinitial[0]}.")}")
-                </MudTd>
                 <MudTd>@context.LeaderBirthdate?.ToString("MMMM dd, yyyy")</MudTd>
                 <MudTd>@context.LeaderBeneficiary</MudTd>
             </RowTemplate>
+            <NoRecordsContent>
+                <MudTd colspan="6" class="text-center">No leaders found</MudTd>
+            </NoRecordsContent>
         </MudTable>
 
         <MudDivider Class="my-4" />
 
-        <!-- Troop Members -->
+        <!-- Members Table -->
         <MudText Typo="Typo.h6" Class="mb-2">Scouts</MudText>
-        <MudTable T="RegisteredTroopMember" Items="TroopMemberData" GroupHeaderStyle="background-color:#e6e6e6;" GroupBy="@_groupDefinition" Bordered="true">
+        <MudTable T="TroopMember" Items="@TroopMembers" GroupBy="@_groupDefinition" Bordered="true">
             <HeaderContent>
                 <MudTh>Full Name (Last, First, M.I.)</MudTh>
                 <MudTh>Birthdate</MudTh>
-                <MudTh>Grade Or Year</MudTh>
+                <MudTh>Grade/Year</MudTh>
                 <MudTh>Registration Status</MudTh>
                 <MudTh>Beneficiary</MudTh>
             </HeaderContent>
             <GroupHeaderTemplate>
-                <MudTd colspan="6">
-                    @context.GroupName: <b>@context.Key</b>
+                @{
+                    var groupStyle = GetGroupHeaderStyle(context.Key?.ToString());
+                }
+                <MudTd colspan="5" Style="@groupStyle">
+                    <div style="display: flex; align-items: center;">
+                        @context.GroupName: <b style="padding-inline:0.5rem;">@context.Key</b>
+                    </div>
                 </MudTd>
             </GroupHeaderTemplate>
             <RowTemplate>
-                <MudTd>
-                    @($"{context.TroopMemLname?.Trim()}, {context.TroopMemFname}{(string.IsNullOrWhiteSpace(context.TroopMemMinitial) ? "" : $" {context.TroopMemMinitial[0]}.")}")
-                </MudTd>
+                <MudTd>@($"{context.TroopMemLname}, {context.TroopMemFname} {context.TroopMemMname}")</MudTd>
                 <MudTd>@context.TroopMemBirthdate?.ToString("MMMM dd, yyyy")</MudTd>
                 <MudTd>@context.TroopMemGradeOrYear</MudTd>
                 <MudTd>@context.TroopMemRegStatus</MudTd>
                 <MudTd>@context.TroopMemBeneficiary</MudTd>
             </RowTemplate>
-        </MudTable>    
+            <NoRecordsContent>
+                <MudTd colspan="5" class="text-center">No members found</MudTd>
+            </NoRecordsContent>
+        </MudTable>
 
         <MudDivider Class="my-4" />
-        <div style="display:flex; justify-content:end">
-        <MudButton EndIcon="@Icons.Material.Filled.ArrowRightAlt" Variant="Variant.Filled" Color="Color.Primary">Submit Troop Information</MudButton>
-        </div>
+
+        <!-- Save Button - Only show when in edit mode -->
+        @if (isEditMode)
+        {
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; gap: 10px;">
+                <MudButton Color="Color.Default" Variant="Variant.Outlined" OnClick="CancelEdit">
+                    Cancel
+                </MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveTroopInformation">
+                    Save Troop Information
+                </MudButton>
+            </div>
+        }
     </MudPaper>
 </div>
 
-
 @code {
-    private IEnumerable<RegisteredTroopLeader> TroopLeaderData = new List<RegisteredTroopLeader>();
-    private IEnumerable<RegisteredTroopMember> TroopMemberData = new List<RegisteredTroopMember>();
+    private HubConnection? _hubConnection;
+    private TroopDetail troopFormModel = new();
+    private TroopInformation troopInformation = new();
+    private MudForm _form;
+    private bool isEditMode = false;
+    private TroopDetail originalTroopFormModel = new(); // To store original values for cancel
 
-    private TableGroupDefinition<RegisteredTroopMember> _groupDefinition;
+    private List<TroopLeader> TroopLeaders = new();
+    private List<TroopMember> TroopMembers = new();
+
+    // Initialize the group definition
+    private TableGroupDefinition<TroopMember> _groupDefinition = new()
+    {
+        GroupName = "Scout Level",
+        Indentation = false,
+        Expandable = true,
+        IsInitiallyExpanded = true,
+        Selector = x => x.TroopMemScoutLevel?.TroopMemScoutLevel ?? "Unknown"
+    };
+
+    private HashSet<TroopLeader> _selectedItems = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Load data from the service
-        await RegisteredTroopLeaderService.LoadDataAsync();
-        await RegisteredTroopMemberService.LoadDataAsync();
-        await TroopClusterService.LoadDataAsync();
-
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated ?? false)
+        try
         {
-            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            // Load all data first
+            await TroopLeaderService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.LeaderPosition)
+            );
 
-            if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out var leaderId))
+            await TroopMemberService.LoadDataAsync(q =>
+                q.Include(t => t.TroopMemScoutLevel));
+
+            await TroopInformationService.LoadDataAsync();
+            await TroopDetailsService.LoadDataAsync();
+
+            var currentUser = await AuthenticatorService.GetCurrentUserAsync();
+
+            if (currentUser != null)
             {
-                // Find current leader by int ID
-                var currentLeader = RegisteredTroopLeaderService.Data
-                    .FirstOrDefault(l => l.LeaderId == leaderId);
+                // Find the current user's troop leader record
+                var currentTroopLeader = TroopLeaderService.Data?
+                    .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
 
-                if (currentLeader != null)
+                if (currentTroopLeader != null)
                 {
-                    // Show current leader + co-leaders with the same TroopNumber
-                    TroopLeaderData = RegisteredTroopLeaderService.Data
-                        .Where(l => l.LeaderId == currentLeader.LeaderId   // the leader himself
-                                 || l.ColeaderTroopNo == currentLeader.LeaderId) // co-leaders under this leader
-                        .ToList();
+                    // Filter to show only leaders/members for this troop
+                    await FilterDataForCurrentTroop(currentTroopLeader.LeaderId);
                 }
             }
-        }
 
-        // Bind to the local table variable
-        TroopLeaderData = RegisteredTroopLeaderService.Data;
-        TroopMemberData = RegisteredTroopMemberService.Data;
+            _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
 
-        // Subscribe so the table updates when data changes (SignalR triggers)
-        RegisteredTroopLeaderService.OnChanged += StateHasChanged;
-        RegisteredTroopMemberService.OnChanged += StateHasChanged;
-
-        _groupDefinition = new TableGroupDefinition<RegisteredTroopMember>
-        {
-            GroupName = "Cluster",
-            Expandable = true,
-            Selector = (member) =>
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
             {
-                var clusterName = TroopClusterService.Data
-                    ?.FirstOrDefault(c => c.ClusterId == member.ClusterId)
-                    ?.ClusterName;
+                if (tableName == nameof(TroopLeader) || tableName == nameof(TroopMember) || tableName == nameof(TroopDetail))
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        await TroopLeaderService.LoadDataAsync(q =>
+                            q.Include(t => t.ApplicationUser)
+                             .Include(t => t.LeaderPosition)
+                        );
 
-                return clusterName ?? "Unassigned";
-            }
-        };
+                        await TroopMemberService.LoadDataAsync(q =>
+                            q.Include(t => t.TroopMemScoutLevel));
+
+                        await TroopInformationService.LoadDataAsync();
+                        await TroopDetailsService.LoadDataAsync();
+
+                        StateHasChanged();
+                    });
+                }
+            });
+
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading data.", Severity.Error);
+            Logger.LogError(ex, "Error initializing troop information page");
+        }
     }
 
+    private async Task FilterDataForCurrentTroop(int leaderId)
+    {
+        try
+        {
+            // Get the troop for this leader
+            var currentTroop = TroopInformationService.Data?
+                .FirstOrDefault(t => t.TroopLeaderId == leaderId);
+
+            if (currentTroop != null)
+            {
+                troopInformation = currentTroop;
+
+                // Filter members by troop number
+                TroopMembers = TroopMemberService.Data?
+                    .Where(m => m.TroopMemTroopNo == currentTroop.TroopNo)
+                    .ToList() ?? new List<TroopMember>();
+
+                // Filter leaders by troop leader ID
+                TroopLeaders = TroopLeaderService.Data?
+                    .Where(l => l.LeaderId == leaderId)
+                    .ToList() ?? new List<TroopLeader>();
+
+                // Load troop details from TroopDetails table
+                var troopDetail = TroopDetailsService.Data?
+                    .FirstOrDefault(td => td.TroopDetailsId == currentTroop.TroopDetailsId);
+
+                if (troopDetail != null)
+                {
+                    // Populate the form model with data from TroopDetails table
+                    troopFormModel = new TroopDetail
+                    {
+                        TroopDetailsId = troopDetail.TroopDetailsId,
+                        TroopName = troopDetail.TroopName,
+                        TroopAgeLevel = troopDetail.TroopAgeLevel,
+                        TroopAddress = troopDetail.TroopAddress,
+                        TroopSponsoringGroup = troopDetail.TroopSponsoringGroup,
+                        TroopType = troopDetail.TroopType,
+                        TroopStatus = troopDetail.TroopStatus
+                    };
+
+                    // Store original values for cancel functionality
+                    originalTroopFormModel = new TroopDetail
+                    {
+                        TroopDetailsId = troopDetail.TroopDetailsId,
+                        TroopName = troopDetail.TroopName,
+                        TroopAgeLevel = troopDetail.TroopAgeLevel,
+                        TroopAddress = troopDetail.TroopAddress,
+                        TroopSponsoringGroup = troopDetail.TroopSponsoringGroup,
+                        TroopType = troopDetail.TroopType,
+                        TroopStatus = troopDetail.TroopStatus
+                    };
+                }
+                else
+                {
+                    // If no troop details exist, create empty ones
+                    troopFormModel = new TroopDetail();
+                    originalTroopFormModel = new TroopDetail();
+                    Snackbar.Add("No troop details found. You can create new ones.", Severity.Info);
+                }
+            }
+            else
+            {
+                Snackbar.Add("No troop found for current user.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading troop details: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Error in FilterDataForCurrentTroop");
+        }
+    }
+
+    private async Task SaveTroopInformation()
+    {
+        try
+        {
+            // Validate form
+            await _form.Validate();
+            if (_form.IsValid)
+            {
+                // Check if we're updating existing troop details or creating new ones
+                if (troopFormModel.TroopDetailsId > 0)
+                {
+                    // Update existing troop details
+                    await TroopDetailsService.Update(troopFormModel);
+                    Snackbar.Add("Troop information updated successfully!", Severity.Success);
+                }
+                else
+                {
+                    // Create new troop details - call Add without expecting a return value
+                    await TroopDetailsService.Add(troopFormModel);
+
+                    // Reload data to get the updated information
+                    await TroopDetailsService.LoadDataAsync();
+                    await TroopInformationService.LoadDataAsync();
+
+                    // Find the newly created troop detail
+                    var currentTroop = TroopInformationService.Data?
+                        .FirstOrDefault(t => t.TroopLeaderId == GetCurrentLeaderId());
+
+                    if (currentTroop != null)
+                    {
+                        // Find the troop detail that matches our current troop
+                        var newTroopDetail = TroopDetailsService.Data?
+                            .FirstOrDefault(td =>
+                                td.TroopName == troopFormModel.TroopName &&
+                                td.TroopAgeLevel == troopFormModel.TroopAgeLevel);
+
+                        if (newTroopDetail != null)
+                        {
+                            // Update troop information with the new TroopDetailsId
+                            currentTroop.TroopDetailsId = newTroopDetail.TroopDetailsId;
+                            await TroopInformationService.Update(currentTroop);
+
+                            // Update our local model
+                            troopFormModel.TroopDetailsId = newTroopDetail.TroopDetailsId;
+                            originalTroopFormModel.TroopDetailsId = newTroopDetail.TroopDetailsId;
+                        }
+                    }
+
+                    Snackbar.Add("Troop information created successfully!", Severity.Success);
+                }
+
+                isEditMode = false;
+
+                // Update original values
+                originalTroopFormModel = new TroopDetail
+                {
+                    TroopDetailsId = troopFormModel.TroopDetailsId,
+                    TroopName = troopFormModel.TroopName,
+                    TroopAgeLevel = troopFormModel.TroopAgeLevel,
+                    TroopAddress = troopFormModel.TroopAddress,
+                    TroopSponsoringGroup = troopFormModel.TroopSponsoringGroup,
+                    TroopType = troopFormModel.TroopType,
+                    TroopStatus = troopFormModel.TroopStatus
+                };
+            }
+            else
+            {
+                Snackbar.Add("Please fix validation errors before saving.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving troop information: {ex.InnerException}", Severity.Error);
+            Logger.LogError(ex, "Error saving troop information");
+        }
+    }
+
+    private void CancelEdit()
+    {
+        // Restore original values from TroopDetails table
+        troopFormModel.TroopName = originalTroopFormModel.TroopName;
+        troopFormModel.TroopAgeLevel = originalTroopFormModel.TroopAgeLevel;
+        troopFormModel.TroopAddress = originalTroopFormModel.TroopAddress;
+        troopFormModel.TroopSponsoringGroup = originalTroopFormModel.TroopSponsoringGroup;
+        troopFormModel.TroopType = originalTroopFormModel.TroopType;
+        troopFormModel.TroopStatus = originalTroopFormModel.TroopStatus;
+
+        isEditMode = false;
+        Snackbar.Add("Changes cancelled.", Severity.Info);
+    }
+
+    // Helper method to get current leader ID
+    private int GetCurrentLeaderId()
+    {
+        var currentUser = AuthenticatorService.GetCurrentUserAsync().Result;
+        if (currentUser != null)
+        {
+            var currentTroopLeader = TroopLeaderService.Data?
+                .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
+            return currentTroopLeader?.LeaderId ?? 0;
+        }
+        return 0;
+    }
+
+    private bool _disposed = false;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+        _disposed = true;
+    }
+
+    private string GetGroupHeaderStyle(string groupKey)
+    {
+        return groupKey?.ToLower() switch
+        {
+            "twinklers" => "background: linear-gradient(135deg, #f467a4 0%, #ffffff 100%); color: #000000; font-weight: bold; padding: 12px;",
+            "star" => "background: linear-gradient(135deg, #f6e03a 0%, #ffffff 100%); color: #000000; font-weight: bold; padding: 12px;",
+            "junior" => "background: linear-gradient(135deg, #fdbd23 0%, #ffffff 100%); color: #000000; font-weight: bold; padding: 12px;",
+            "senior" => "background: linear-gradient(135deg, #ff8546 0%, #ffffff 100%); color: #000000; font-weight: bold; padding: 12px;",
+            "cadet" => "background: linear-gradient(135deg, #a821e5 0%, #ffffff 100%); color: #000000; font-weight: bold; padding: 12px;",
+            _ => "background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%); color: #000000; font-weight: bold; padding: 12px;"
+        };
+    }
 }

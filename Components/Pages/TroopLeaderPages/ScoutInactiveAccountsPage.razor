@@ -1,0 +1,440 @@
+﻿@using System.Net.Http.Json
+@using IA_AbansiBabayiSystemBlazor.Data
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.EntityFrameworkCore
+@using IA_AbansiBabayiSystemBlazor.Service
+@using IA_AbansiBabayiSystemBlazor.Services
+@using Microsoft.AspNetCore.Identity
+@using IA_AbansiBabayiSystemBlazor.Components.Pages
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject NavigationManager NavigationManager
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject UserManager<ApplicationUser> UserManager
+@inject EmailService EmailService
+
+@inject AuthenticatorService AuthenticatorService
+
+@implements IDisposable
+
+@page "/scoutInactiveAccountsPage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Troop Leader")]
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudTabs>
+        <MudTabPanel Text="Rejected">
+            <MudDataGrid T="TroopMember"
+                         MultiSelection="true"
+                         RowsPerPage="8"
+                         ColumnResizeMode="ResizeMode.Column"
+                         Striped="true"
+                         Items="@RejectedTroopMembers"
+                         SortMode="SortMode.Multiple"
+                         Filterable="true"
+                         Groupable="true"
+                         QuickFilter="@_quickFilter"
+                         Hideable="true"
+                         SelectedItems="@_selectedItems"
+                         SelectedItemsChanged="SelectedItemsChanged">
+
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Rejected Registrations</MudText>
+                    <MudSpacer />
+                    <MudTextField @bind-Value="_searchString"
+                                  Placeholder="Search"
+                                  Adornment="Adornment.Start"
+                                  Immediate="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  IconSize="Size.Medium"
+                                  Class="mt-0" />
+                </ToolBarContent>
+
+                <Columns>
+                    <PropertyColumn Property="x => x.TroopMemId" Title="ID" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemScoutLevel.TroopMemScoutLevel" Title="Scout Level" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemTroopNo" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="Registration Status" Sortable="false" Filterable="false" />
+                    <TemplateColumn Title="Full Name" Sortable="true">
+                        <CellTemplate Context="context">
+                            <span style="white-space: nowrap">
+                                @GetFullName(context.Item)
+                            </span>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Beneficiary" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Email" Editable="true" />
+                </Columns>
+
+                <PagerContent>
+                    <MudDataGridPager T="TroopMember" Style="color: #25a129ff;" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Archived">
+            <MudDataGrid T="TroopMember"
+                         MultiSelection="true"
+                         RowsPerPage="8"
+                         ColumnResizeMode="ResizeMode.Column"
+                         Striped="true"
+                         Items="@ArchivedTroopMembers"
+                         SortMode="SortMode.Multiple"
+                         Filterable="true"
+                         Groupable="true"
+                         QuickFilter="@_quickFilter"
+                         Hideable="true"
+                         SelectedItems="@_selectedItems"
+                         SelectedItemsChanged="SelectedItemsChanged">
+
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Rejected Registrations</MudText>
+                    <MudSpacer />
+                    <MudTextField @bind-Value="_searchString"
+                                  Placeholder="Search"
+                                  Adornment="Adornment.Start"
+                                  Immediate="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  IconSize="Size.Medium"
+                                  Class="mt-0" />
+                </ToolBarContent>
+
+                <Columns>
+                    <PropertyColumn Property="x => x.TroopMemId" Title="ID" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemScoutLevel.TroopMemScoutLevel" Title="Scout Level" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemTroopNo" Title="Teaching or Non-Teaching" Sortable="false" Filterable="false" />
+                    <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="Registration Status" Sortable="false" Filterable="false" />
+                    <TemplateColumn Title="Full Name" Sortable="true">
+                        <CellTemplate Context="context">
+                            <span style="white-space: nowrap">
+                                @GetFullName(context.Item)
+                            </span>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.TroopMemGradeOrYear" Title="Grade or Year" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemRegStatus" Title="Registration Status" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemBirthdate" Title="Birth Date" Format="MMMM dd, yyyy" Sortable="false" Filterable="false" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemEmail" Title="Email" Editable="true" />
+                    <PropertyColumn Property="x => x.TroopMemRegisteredEmail" Title="Registered Email" Editable="true" />
+                </Columns>
+
+                <PagerContent>
+                    <MudDataGridPager T="TroopMember" Style="color: #25a129ff;" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudTabPanel>
+    </MudTabs>
+</div>
+
+@code {
+    private HubConnection? _hubConnection;
+    private TroopMember? _selectedPerson;
+    private bool _disposed = false;
+
+    // UI State
+    private bool multipleButtonDisabled = true;
+    private bool singleButtonDisabled = false;
+    private bool reject_switch = false;
+    private string _searchString = string.Empty;
+    private HashSet<TroopMember> _selectedItems = new();
+    private HashSet<int> _selectedIds = new();
+
+    private int _currentTroopLeaderId;
+    private TroopInformation _currentTroopLeader;
+
+    // UPDATED: Only show rejected troop members for the current troop leader's troop
+    private IEnumerable<TroopMember> RejectedTroopMembers =>
+        (TroopMemberService.Data ?? Enumerable.Empty<TroopMember>())
+            .Where(x => x.ApplicationUser != null &&
+                       x.ApplicationUser.AccountStatusId == 3 &&
+                       x.TroopMemTroopNo == _currentTroopLeader?.TroopNo); // Add this filter
+
+    // UPDATED: Only show archived troop members for the current troop leader's troop
+    private IEnumerable<TroopMember> ArchivedTroopMembers =>
+        (TroopMemberService.Data ?? Enumerable.Empty<TroopMember>())
+            .Where(x => x.ApplicationUser != null &&
+                       x.ApplicationUser.AccountStatusId == 4 &&
+                       x.TroopMemTroopNo == _currentTroopLeader?.TroopNo); // Add this filter
+
+
+    // Quick Filter
+    private Func<TroopMember, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+
+        return (x.TroopMemFname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemLname?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (x.TroopMemEmail?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    };
+
+    // Helper Methods
+    private string GetFullName(TroopMember person)
+    {
+        var middleInitial = string.IsNullOrWhiteSpace(person.TroopMemMname) ? "" : $" {person.TroopMemMname[0]}.";
+        return $"{person.TroopMemFname}{middleInitial} {person.TroopMemLname}";
+    }
+
+    private void SelectedItemsChanged(HashSet<TroopMember> selected)
+    {
+        _selectedItems = selected;
+        _selectedIds = selected.Select(x => x.TroopMemId).ToHashSet();
+
+        multipleButtonDisabled = !_selectedItems.Any();
+        singleButtonDisabled = _selectedItems.Any();
+    }
+
+    // Lifecycle Methods
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get the current user using AuthenticatorService
+            var currentUser = await AuthenticatorService.GetCurrentUserAsync();
+
+            if (currentUser != null)
+            {
+                // Load troop leaders to find the current user's troop leader record
+                await TroopLeaderService.LoadDataAsync(q =>
+                    q.Include(t => t.ApplicationUser)
+                     .Include(t => t.LeaderPosition)
+                );
+
+                // Find the troop leader record for this user
+                var currentTroopLeader = TroopLeaderService.Data?
+                    .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
+
+                _currentTroopLeaderId = currentTroopLeader?.LeaderId ?? 0;
+
+                // Load troop information and find the troop this leader manages
+                await TroopInformationService.LoadDataAsync();
+                _currentTroopLeader = TroopInformationService.Data?
+                    .FirstOrDefault(t => t.TroopLeaderId == _currentTroopLeaderId);
+
+                // Now load troop members (scouts) - this should happen regardless of whether we found a troop
+                await TroopMemberService.LoadDataAsync(q =>
+                    q.Include(t => t.ApplicationUser)
+                     .Include(t => t.TroopMemScoutLevel)
+                );
+            }
+            else
+            {
+                // If no current user, still load troop members but they'll be filtered to empty
+                await TroopMemberService.LoadDataAsync(q =>
+                    q.Include(t => t.ApplicationUser)
+                     .Include(t => t.TroopMemScoutLevel)
+                );
+            }
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+            {
+                if (tableName == nameof(TroopMember))
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        var currentIds = _selectedItems.Select(x => x.TroopMemId).ToHashSet();
+
+                        await TroopMemberService.LoadDataAsync(q =>
+                            q.Include(t => t.ApplicationUser)
+                             .Include(t => t.TroopMemScoutLevel)
+                        );
+
+                        if (TroopMemberService.Data != null)
+                        {
+                            _selectedItems = TroopMemberService.Data
+                                .Where(x => currentIds.Contains(x.TroopMemId))
+                                .ToHashSet();
+
+                            multipleButtonDisabled = !_selectedItems.Any();
+                            singleButtonDisabled = _selectedItems.Any();
+                        }
+
+                        StateHasChanged();
+                    });
+                }
+            });
+
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error initializing page: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // Action Methods
+    private async Task SinglePersonClickedAsync(TroopMember person)
+    {
+        _selectedPerson = person;
+        await ShowConfirmationDialog(isSingle: true, isReject: reject_switch);
+    }
+
+    private async Task MultiplePersonClickedAsync()
+    {
+        if (_selectedItems == null || !_selectedItems.Any()) return;
+        await ShowConfirmationDialog(isSingle: false, isReject: reject_switch);
+    }
+
+    private async Task ShowConfirmationDialog(bool isSingle, bool isReject)
+    {
+        try
+        {
+            var (title, message) = GetDialogContent(isSingle, isReject);
+
+            var parameters = new DialogParameters
+        {
+            { "Content", message },
+            { "IsReject", isReject },
+            { "OnConfirmed", EventCallback.Factory.Create(this, () => ProcessAction(isSingle, isReject)) }
+        };
+
+            var options = new DialogOptions
+            {
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+
+            // ✅ Await the dialog to prevent overlapping renders
+            var dialog = DialogService.Show<ConfirmationDialog>(title, parameters, options);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                Snackbar.Add("Action completed successfully!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error showing dialog: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private (string title, string message) GetDialogContent(bool isSingle, bool isArchive)
+    {
+        if (isSingle && _selectedPerson != null)
+        {
+            var title = isArchive ? "Confirm Deletion" : "Confirm Registration";
+            var message = isArchive
+                ? $"Are you sure you want to reject the request of <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b>?"
+                : $"Are you sure you want to register <b>{_selectedPerson.TroopMemFname} {_selectedPerson.TroopMemLname}</b> as a <b>{_selectedPerson.TroopMemScoutLevel.TroopMemScoutLevel}</b>?";
+
+            return (title, message);
+        }
+        else if (!isSingle && _selectedItems.Any())
+        {
+            var title = isArchive ? "Confirm Multiple Deletions" : "Confirm Multiple Registrations";
+            var names = string.Join("</li><li>", _selectedItems.Select(p => $"{p.TroopMemFname} {p.TroopMemLname}"));
+            var message = isArchive
+                ? $"Are you sure you want to reject these registration requests?<ul><li>{names}</li></ul>"
+                : $"Are you sure you want to register these Troop Leaders?<ul><li>{names}</li></ul>";
+
+            return (title, message);
+        }
+
+        return ("", "");
+    }
+
+    private async Task ProcessAction(bool isSingle, bool isArchive)
+    {
+        try
+        {
+            if (isSingle)
+            {
+                if (_selectedPerson != null)
+                {
+                    if (isArchive) await RejectPerson(_selectedPerson);
+                    else await RegisterPerson(_selectedPerson);
+                }
+            }
+            else
+            {
+                foreach (var person in _selectedItems.ToList())
+                {
+                    if (isArchive) await RejectPerson(person);
+                    else await RegisterPerson(person);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error processing action: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RegisterPerson(TroopMember person)
+    {
+        // Add your registration logic here
+
+
+
+        Snackbar.Add($"Registered {person.TroopMemFname} {person.TroopMemLname}", Severity.Success);
+        await Task.CompletedTask;
+    }
+
+    private async Task RejectPerson(TroopMember person)
+    {
+        try
+        {
+            ApplicationUser? user = null;
+
+            // Try to find the user by IdentityUserId (preferred)
+            if (!string.IsNullOrEmpty(person.ApplicationUserId))
+            {
+                user = await UserManager.FindByIdAsync(person.ApplicationUserId);
+            }
+            else
+            {
+                // Fallback to email if mapping not available
+                user = await UserManager.FindByEmailAsync(person.TroopMemEmail);
+            }
+
+            if (user != null)
+            {
+                user.AccountStatusId = 3; // Rejected
+                await UserManager.UpdateAsync(user);
+
+                Snackbar.Add($"Success: Request of {person.TroopMemFname} {person.TroopMemLname} was Rejected.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"No ASP.NET Identity account found for {person.TroopMemEmail}.", Severity.Warning);
+            }
+
+            await TroopMemberService.Update(person);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating account status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            _hubConnection?.DisposeAsync();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+}

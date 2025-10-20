@@ -1,0 +1,31 @@
+﻿
+.page-title {
+    margin-left: 1rem;
+    padding: 2rem;
+}
+
+.hero-content {
+    padding: 1rem;
+    box-sizing: border-box;
+    background-image: url(images/BG-Base1.png);
+    height: 95vh;
+}
+
+.pager-addOn {
+    position: absolute;
+    display: flex;
+    gap: 2rem;
+    top: 0.5rem;
+    margin-left: 4.5rem;
+}
+
+.mud-tabs-tabbar {
+    align-items: center;
+    background: linear-gradient(42deg,rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 100%);
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    border: solid 1px #ffff;
+    border-radius: 1rem;
+    padding-inline: 2rem;
+}

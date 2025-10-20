@@ -1,0 +1,164 @@
+﻿@using System.Net.Http.Json
+@using IA_AbansiBabayiSystemBlazor.Data
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.EntityFrameworkCore
+@using IA_AbansiBabayiSystemBlazor.Service
+@using IA_AbansiBabayiSystemBlazor.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject ApplicationDbContext GetTroopMemberData
+@inject NavigationManager NavigationManager
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopLeader> TroopLeaderService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject TableDataService<ScoutJoinedEvent> ScoutJoinedEventService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject AuthenticatorService AuthenticatorService
+
+@page "/eventDashboardPage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
+
+<MudDialogProvider />
+
+<div class="hero-content">
+
+    <MudDataGrid T="TroopMember"
+                 @ref="dataGrid"
+                 RowsPerPage="8"
+                 ColumnResizeMode="ResizeMode.Column"
+                 Striped="true"
+                 Items="@FilteredElements"
+                 SortMode="SortMode.Multiple"
+                 Filterable="true"
+                 Groupable="true"
+                 Hideable="true"
+                 GroupStyleFunc="GroupBackgroundColor"
+                 ReadOnly="true">
+
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Scout Registration (Paid Only)</MudText>
+        </ToolBarContent>
+
+        <Columns>
+            <PropertyColumn Property="x => x.TroopMemId" Title="ID" Editable="false" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.TroopMemTroopNo" Title="Troop Number" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.TroopMemScoutNumber" Title="Scout Number" Sortable="false" Filterable="false" />
+            <TemplateColumn Title="Full Name" Sortable="true">
+                <CellTemplate Context="context">
+                    @($"{context.Item.TroopMemFname} {(string.IsNullOrWhiteSpace(context.Item.TroopMemMname) ? "" : context.Item.TroopMemMname[0] + ".")} {context.Item.TroopMemLname}")
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Scout Level" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @context.Item.TroopMemScoutLevel.TroopMemScoutLevel
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.TroopMemBeneficiary" Title="Beneficiary" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.TroopMemEmail" Title="Email" Editable="false" />
+            <TemplateColumn Title="Payment Status" Sortable="false" Filterable="false">
+                <CellTemplate Context="context">
+                    @{
+                        var joinedEvent = _joinedEvents.FirstOrDefault(j => j.TroopMemId == context.Item.TroopMemId);
+                        var status = joinedEvent != null ? joinedEvent.PaymentStatus : "Not Paid";
+                    }
+                    <MudChip Color="Color.Success"
+                             Variant="Variant.Filled" Size="Size.Small">
+                        <MudIcon Icon="@Icons.Material.Filled.Check" />
+                        @status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+
+        </Columns>
+    </MudDataGrid>
+</div>
+
+@code {
+    private TroopMember? _selectedPerson;
+    private HubConnection? _hubConnection;
+
+    private string _searchString = string.Empty;
+    private int _currentTroopLeaderId;
+    private TroopInformation _currentTroopLeader;
+
+    private MudDataGrid<TroopMember> dataGrid;
+
+    private List<TroopMemberScoutLevel> _scoutLevels = new();
+    private List<ScoutJoinedEvent> _joinedEvents = new();
+
+    private IEnumerable<TroopMember> FilteredElements => (TroopMemberService.Data ?? Enumerable.Empty<TroopMember>())
+        .Where(x => x.ApplicationUser != null &&
+                    x.ApplicationUser.AccountStatusId == 2 &&
+                    x.TroopMemTroopNo == _currentTroopLeader?.TroopNo &&
+                    _joinedEvents.Any(j => j.TroopMemId == x.TroopMemId && j.PaymentStatus == "Paid"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadScoutLevels();
+
+            var currentUser = await AuthenticatorService.GetCurrentUserAsync();
+
+            if (currentUser != null)
+            {
+                await TroopLeaderService.LoadDataAsync(q => q.Include(t => t.ApplicationUser));
+                var currentTroopLeader = TroopLeaderService.Data?
+                    .FirstOrDefault(t => t.ApplicationUser?.Id == currentUser.Id);
+
+                _currentTroopLeaderId = currentTroopLeader?.LeaderId ?? 0;
+
+                await TroopInformationService.LoadDataAsync();
+                _currentTroopLeader = TroopInformationService.Data?
+                    .FirstOrDefault(t => t.TroopLeaderId == _currentTroopLeaderId);
+            }
+
+            // Load troop members
+            await TroopMemberService.LoadDataAsync(q =>
+                q.Include(t => t.ApplicationUser)
+                 .Include(t => t.TroopMemScoutLevel)
+            );
+
+            // Load ScoutJoinedEvents
+            await ScoutJoinedEventService.LoadDataAsync();
+            _joinedEvents = ScoutJoinedEventService.Data?.ToList() ?? new List<ScoutJoinedEvent>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error initializing page: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadScoutLevels()
+    {
+        try
+        {
+            _scoutLevels = await GetTroopMemberData.TroopMemberScoutLevels
+                .AsNoTracking()
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading scout levels: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GroupBackgroundColor(GroupDefinition<TroopMember> item)
+    {
+        switch (item.Grouping.Key?.ToString())
+        {
+            case "Twinklers": return "background: linear-gradient(to right, #f467a4 0%, #f9b8d4 30%, #ffffff 100%); color: #ffffff;";
+            case "Star": return "background: linear-gradient(to right, #f6e03a 0%, #faf0a0 30%, #ffffff 100%); color: #ffffff;";
+            case "Junior": return "background: linear-gradient(to right, #fdbd23 0%, #fee6a1 30%, #ffffff 100%); color: #ffffff;";
+            case "Senior": return "background: linear-gradient(to right, #ff8546 0%, #ffc5a8 30%, #ffffff 100%); color: #ffffff;";
+            case "Cadet": return "background: linear-gradient(to right, #a821e5 0%, #d9a6f2 30%, #ffffff 100%); color: #ffffff;";
+            default: return "background-color: transparent; color: #000000;";
+        }
+    }
+}

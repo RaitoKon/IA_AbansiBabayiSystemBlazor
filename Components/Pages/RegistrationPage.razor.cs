@@ -3,6 +3,7 @@ using IA_AbansiBabayiSystemBlazor.Data.Models;
 using IA_AbansiBabayiSystemBlazor.Hubs;
 using IA_AbansiBabayiSystemBlazor.Service;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -15,43 +16,52 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
     public partial class RegistrationPage
     {
 
+        private string passedSelectedRole = string.Empty;
+        private int passedSelectedScoutLevel;
+        private string currentRole =  string.Empty;
+        private string currentScoutLevel = string.Empty;
+
         private string errorMessage = "";
         private string successMessage = "";
 
-        private string currentScoutNumber = string.Empty; //Scout
-        private string currentGradeOrYear = string.Empty;
-
-        private string currentPosition = string.Empty;  //Troop Leader
-        private string currentTorNT = string.Empty;
-
-        private string currentTroopNumber = string.Empty;  //Scout & Co leader
-
-        private string currentRole = string.Empty;  //All
-        private string currentFname = string.Empty;
-        private string currentMInitial = string.Empty;
-        private string currentLname = string.Empty;
-        private string currentStatus = string.Empty;
-        private DateTime? currentBirthDate = DateTime.Today;
-        private string currentBeneficiary = string.Empty;
-        private string currentEmail = string.Empty;
-        private string selectedLeaderName = string.Empty;
-
-        private List<TroopLeaderInfo> troopLeaders = new();
+        private List<TroopMemberScoutLevel> TroopMemberScoutLevel = new();
+        private List<LeaderPosition> LeaderPositions = new();
+        private List<TroopInformation> TroopInformations = new();
+        private List<TroopInformation> TroopLeaders = new();
         private HubConnection? _hubConnection;
+
+        private TroopLeader leaderinfo = new();
+        private TroopMember troopmemberinfo = new();
+        private TroopInformation troopinfo = new();
+        private Dictionary<string, string> validationErrors = new Dictionary<string, string>();
+
+
         [Inject]
         private IHubContext<AutoUpdateHub> HubContext { get; set; } = default!;
 
-        public class TroopLeaderInfo
-        {
-            public int LeaderId { get; set; }
-            public string FullName { get; set; } = string.Empty;
-        }
         protected override async Task OnInitializedAsync()
         {
-            currentRole = PassedDataRoute.ScoutLevel;
-            currentStatus = PassedDataRoute.Status;
 
-            await LoadTroopLeaders();
+            passedSelectedRole = RegistrationStateService.SelectedRole;
+            passedSelectedScoutLevel = RegistrationStateService.SelectedScoutLevel;
+
+            currentRole = passedSelectedRole;
+            if (passedSelectedScoutLevel != null)
+            {
+                troopmemberinfo.TroopMemScoutLevelId = passedSelectedScoutLevel;
+            }
+
+            try
+            {
+                await LoadLeaderPositions();
+                await LoadTroopMemberScoutLevel();
+                await LoadTroopInformation();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading LeaderPositions");
+                errorMessage = "Failed to load positions. Please try again later.";
+            }
 
             // Setup SignalR
             _hubConnection = new HubConnectionBuilder()
@@ -61,98 +71,43 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
 
             _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
             {
-                if (tableName == "TroopLeaderRegistration")
+                Logger.LogInformation("Received SignalR update for table: {Table}", tableName);
+                if (tableName == "LeaderPosition")
                 {
-                    await LoadTroopLeaders();
+                    await LoadLeaderPositions();
+                    await TroopLeaderService.LoadDataAsync();
+                    await LoadTroopInformation();
+                    await TroopInformationService.LoadDataAsync();
                     await InvokeAsync(StateHasChanged);
                 }
             });
 
             await _hubConnection.StartAsync();
+            Logger.LogInformation("SignalR connection started.");
         }
 
-        private async Task LoadTroopLeaders()
+        private async Task LoadLeaderPositions()
         {
-            troopLeaders = await AppDbContext.RegisteredTroopLeaders
-                .Where(leader => leader.LeaderPosition == "Leader" &&
-                                 leader.LeaderRole == "Troop Leader")
-                .Select(leader => new TroopLeaderInfo
-                {
-                    LeaderId = leader.LeaderId,
-                    FullName = leader.LeaderFname + " " +
-                               (string.IsNullOrEmpty(leader.LeaderMinitial) ? "" : leader.LeaderMinitial[0] + ". ") +
-                               leader.LeaderLname
-                })
-                .OrderBy(x => x.LeaderId)
-                .ToListAsync();
+            await LeaderPositionService.LoadDataAsync();
+            LeaderPositions = LeaderPositionService.Data.ToList();
         }
 
-        private bool toggleRegistrationDropdown = false;
-        private void ToggleRegistrationDropdown()
+        private async Task LoadTroopMemberScoutLevel()
         {
-            toggleRegistrationDropdown = !toggleRegistrationDropdown;
-
+            await ScoutLevelService.LoadDataAsync();
+            TroopMemberScoutLevel = ScoutLevelService.Data.ToList();
         }
 
-        private void SelectedRole(string selectedRole)
+        private async Task LoadTroopInformation()
         {
-            currentRole = selectedRole;
-            toggleRegistrationDropdown = false;
-        }
+            await TroopInformationService.LoadDataAsync(query => query
+                .Include(t => t.TroopLeader) // This will load the related leader data
+            );
 
-        private bool toggleTroopLeaderDropdown = false;
-
-        private void ToggleTroopLeaderDropdown()
-        {
-            toggleTroopLeaderDropdown = !toggleTroopLeaderDropdown;
-        }
-
-        private void SelectTroopNumber(string leaderId, string fullName)
-        {
-            currentTroopNumber = leaderId;
-            selectedLeaderName = fullName;
-            toggleTroopLeaderDropdown = false;
-        }
-
-        private bool toggleStatusDropdown = false;
-
-        private void ToggleStatusDropdown()
-        {
-            toggleStatusDropdown = !toggleStatusDropdown;
-        }
-
-        private bool togglePositionDropdown = false;
-        private void TogglePositionDropdown()
-        {
-
-            togglePositionDropdown = !togglePositionDropdown;
-
-        }
-
-        private bool toggleTorNTDropdown = false;
-        private void ToggleTorNTDropdown()
-        {
-            toggleTorNTDropdown = !toggleTorNTDropdown;
-        }
-
-        private bool toggleScoutNumberInput = true;
-        private void SelectedStatus(string selectedStatus)
-        {
-            currentStatus = selectedStatus;
-            toggleScoutNumberInput = false;
-            ToggleStatusDropdown();
-        }
-
-        private void SelectedPosition(string selectedPosition)
-        {
-            currentPosition = selectedPosition;
-            TogglePositionDropdown();
-        }
-
-        private void SelectedTorNT(string selectedTorNT)
-        {
-            currentTorNT = selectedTorNT;
-            ToggleTorNTDropdown();
+            // Use the original entities - they now have TroopLeader loaded
+            TroopInformations = TroopInformationService.Data
+                .Where(troop => troop.TroopLeaderId != null)
+                .ToList();
         }
 
         private async Task CancelRegistration()
@@ -160,185 +115,357 @@ namespace IA_AbansiBabayiSystemBlazor.Components.Pages
             NavigationManager.NavigateTo("/landingPage", forceLoad: true);
         }
 
-        private bool isSubmitting = false;
-        private async Task SubmitRegistration()
+        private async Task<bool> ValidateForm()
         {
-            isSubmitting = true;
+            validationErrors.Clear();
+
+            // Role validation
+            if (string.IsNullOrWhiteSpace(currentRole))
+            {
+                validationErrors["Role"] = "Please select a role.";
+            }
+
+            // Scout specific validations
+            if (currentRole == "Scout")
+            {
+                // Scout Level validation
+                if (troopmemberinfo.TroopMemScoutLevelId == null || troopmemberinfo.TroopMemScoutLevelId == 0)
+                {
+                    validationErrors["ScoutLevel"] = "Scout Level is required.";
+                }
+
+                // Troop validation
+                if (troopmemberinfo.TroopMemTroopNo == null)
+                {
+                    validationErrors["Troop"] = "Troop is required.";
+                }
+
+                // First Name validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemFname))
+                {
+                    validationErrors["FirstName"] = "First Name is required.";
+                }
+                else if (troopmemberinfo.TroopMemFname.Trim().Length < 2)
+                {
+                    validationErrors["FirstName"] = "First Name must be at least 2 characters.";
+                }
+
+                // Last Name validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemLname))
+                {
+                    validationErrors["LastName"] = "Last Name is required.";
+                }
+                else if (troopmemberinfo.TroopMemLname.Trim().Length < 2)
+                {
+                    validationErrors["LastName"] = "Last Name must be at least 2 characters.";
+                }
+
+                // Birthdate validation
+                if (troopmemberinfo.TroopMemBirthdate == null)
+                {
+                    validationErrors["Birthdate"] = "Birthdate is required.";
+                }
+                else if (troopmemberinfo.TroopMemBirthdate > DateTime.Now)
+                {
+                    validationErrors["Birthdate"] = "Birthdate cannot be in the future.";
+                }
+                else if (troopmemberinfo.TroopMemBirthdate > DateTime.Now.AddYears(-4))
+                {
+                    validationErrors["Birthdate"] = "Must be at least 4 years old.";
+                }
+
+                // Grade/Year validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemGradeOrYear))
+                {
+                    validationErrors["GradeYear"] = "Grade or Year is required.";
+                }
+
+                // Registration Status validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemRegStatus))
+                {
+                    validationErrors["RegistrationStatus"] = "Registration status is required.";
+                }
+
+                // Beneficiary validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemBeneficiary))
+                {
+                    validationErrors["Beneficiary"] = "Beneficiary is required.";
+                }
+                else if (troopmemberinfo.TroopMemBeneficiary.Trim().Length < 2)
+                {
+                    validationErrors["Beneficiary"] = "Beneficiary name must be at least 2 characters.";
+                }
+
+                // Email validation
+                if (string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemEmail))
+                {
+                    validationErrors["Email"] = "Email is required.";
+                }
+                else if (!IsValidEmail(troopmemberinfo.TroopMemEmail))
+                {
+                    validationErrors["Email"] = "Invalid email format.";
+                }
+            }
+
+            // Troop Leader specific validations
+            else if (currentRole == "Troop Leader")
+            {
+                // Position validation
+                if (leaderinfo.LeaderPositionId == null || leaderinfo.LeaderPositionId == 0)
+                {
+                    validationErrors["Position"] = "Position is required.";
+                }
+
+                // Teaching status validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderTorNt))
+                {
+                    validationErrors["TeachingStatus"] = "Teaching status is required.";
+                }
+
+                // Troop Number validation
+                if (leaderinfo.LeaderRegStatus == "Existing Leader" && leaderinfo.LeaderTroopNo == null)
+                {
+                    validationErrors["TroopNumber"] = "Troop Number is required for existing leaders.";
+                }
+
+                // First Name validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderFname))
+                {
+                    validationErrors["FirstName"] = "First Name is required.";
+                }
+                else if (leaderinfo.LeaderFname.Trim().Length < 2)
+                {
+                    validationErrors["FirstName"] = "First Name must be at least 2 characters.";
+                }
+
+                // Last Name validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderLname))
+                {
+                    validationErrors["LastName"] = "Last Name is required.";
+                }
+                else if (leaderinfo.LeaderLname.Trim().Length < 2)
+                {
+                    validationErrors["LastName"] = "Last Name must be at least 2 characters.";
+                }
+
+                // Birthdate validation
+                if (leaderinfo.LeaderBirthdate == null)
+                {
+                    validationErrors["Birthdate"] = "Birthdate is required.";
+                }
+                else if (leaderinfo.LeaderBirthdate > DateTime.Now)
+                {
+                    validationErrors["Birthdate"] = "Birthdate cannot be in the future.";
+                }
+                else if (leaderinfo.LeaderBirthdate > DateTime.Now.AddYears(-4))
+                {
+                    validationErrors["Birthdate"] = "Must be at least 4 years old.";
+                }
+
+                // Registration Status validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderRegStatus))
+                {
+                    validationErrors["RegistrationStatus"] = "Registration status is required.";
+                }
+
+                // Beneficiary validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderBeneficiary))
+                {
+                    validationErrors["Beneficiary"] = "Beneficiary is required.";
+                }
+                else if (leaderinfo.LeaderBeneficiary.Trim().Length < 2)
+                {
+                    validationErrors["Beneficiary"] = "Beneficiary name must be at least 2 characters.";
+                }
+
+                // Email validation
+                if (string.IsNullOrWhiteSpace(leaderinfo.LeaderEmail))
+                {
+                    validationErrors["Email"] = "Email is required.";
+                }
+                else if (!IsValidEmail(leaderinfo.LeaderEmail))
+                {
+                    validationErrors["Email"] = "Invalid email format.";
+                }
+            }
+
+            // Email uniqueness check (for both roles)
+            if (currentRole == "Scout" && !string.IsNullOrWhiteSpace(troopmemberinfo.TroopMemEmail))
+            {
+                var existingScoutEmail = TroopMemberService.Data.FirstOrDefault(x => x.TroopMemEmail == troopmemberinfo.TroopMemEmail);
+                var aspExistingEmail = await UserManagerService.FindByEmailAsync(troopmemberinfo.TroopMemEmail);
+
+                if (existingScoutEmail != null || aspExistingEmail != null)
+                {
+                    validationErrors["Email"] = "Email is already taken.";
+                }
+            }
+            else if (currentRole == "Troop Leader" && !string.IsNullOrWhiteSpace(leaderinfo.LeaderEmail))
+            {
+                var existingLeaderEmail = TroopLeaderService.Data.FirstOrDefault(x => x.LeaderEmail == leaderinfo.LeaderEmail);
+                var aspExistingEmail = await UserManagerService.FindByEmailAsync(leaderinfo.LeaderEmail);
+
+                if (existingLeaderEmail != null || aspExistingEmail != null)
+                {
+                    validationErrors["Email"] = "Email is already taken.";
+                }
+            }
+
+            // If there are any validation errors, show the first one as general error
+            if (validationErrors.Any())
+            {
+                errorMessage = validationErrors.First().Value;
+                return false;
+            }
+
+            successMessage = "Validation passed!";
+            return true;
+        }
+
+        private bool IsValidEmail(string email)
+        {
             try
             {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email && email.Contains("@");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    
+        // Method to clear validation errors (call this before validation)
+        private void ClearValidation()
+        {
+            validationErrors.Clear();
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+        }
 
-                errorMessage = "";
-                await Task.Delay(2000);
+        private bool isSubmitting = false;
 
-                if (currentRole == "Troop Leader")
+        private async Task SubmitRegistration()
+        {
+            ClearValidation();
+            isSubmitting = true;
+            errorMessage = "";
+            successMessage = "";
+
+            await Task.Delay(3000);
+
+            if (currentRole == "Scout")
+            {
+
+                troopmemberinfo.UserRole = "Scout";
+                await SubmitTroopMemberRegistration();
+
+            }
+            else if (currentRole == "Troop Leader")
+            {
+                leaderinfo.UserRole = "Troop Leader";
+                await SubmitLeaderRegistration();
+            }
+        }
+        private async Task SubmitTroopMemberRegistration()
+        {
+            try
+            {
+                if (!await ValidateForm())
+                    return;
+
+                var troopMemUser = new ApplicationUser
                 {
+                    MustChangePassword = true,
+                    UserName = troopmemberinfo.TroopMemEmail,
+                    Email = troopmemberinfo.TroopMemEmail,
+                    AccountStatusId = 1
+                };
 
-                    errorMessage = string.Empty;
-                    successMessage = string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(currentFname) ||
-                        string.IsNullOrWhiteSpace(currentMInitial) ||
-                        string.IsNullOrWhiteSpace(currentLname) ||
-                        string.IsNullOrWhiteSpace(currentPosition) ||
-                        string.IsNullOrWhiteSpace(currentRole) ||
-                        string.IsNullOrWhiteSpace(currentTorNT) ||
-                        string.IsNullOrWhiteSpace(currentStatus) ||
-                        !currentBirthDate.HasValue ||
-                        string.IsNullOrWhiteSpace(currentBeneficiary) ||
-                        string.IsNullOrWhiteSpace(currentEmail)
-                        )
-                    {
-                        errorMessage = "Please fill in all required fields.";
-                        return;
-                    }
-
-                    int? validatedtroopNumber = null;
-                    if (!string.IsNullOrWhiteSpace(currentTroopNumber))
-                    {
-                        if (int.TryParse(currentTroopNumber, out var parsedNumber))
-                        {
-                            validatedtroopNumber = parsedNumber;
-                        }
-                        else
-                        {
-                            errorMessage = "Invalid troop number.";
-                            return;
-                        }
-                    }
-
-                    try
-                    {
-
-                        var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var registerdLeader = AppDbContext.TroopLeaderRegistrations.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                        var registerdMember = AppDbContext.TroopMemberRegistrations.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-
-                        if (existingLeader != null || registerdLeader != null || existingMember != null || registerdMember != null)
-                        {
-                            errorMessage = "Your email is already registered. Proceed to log-in";
-                            return;
-                        }
-
-                        var newLeader = new TroopLeaderRegistration
-                        {
-                            LeaderFname = currentFname,
-                            LeaderMinitial = currentMInitial,
-                            LeaderLname = currentLname,
-                            LeaderPosition = currentPosition,
-                            ColeaderTroopNo = validatedtroopNumber,
-                            LeaderRole = currentRole,
-                            LeaderTorNT = currentTorNT,
-                            LeaderRegStatus = currentStatus,
-                            LeaderEmail = currentEmail,
-                            LeaderBeneficiary = currentBeneficiary,
-                            LeaderBirthdate = currentBirthDate.Value
-                        };
-
-                        AppDbContext.TroopLeaderRegistrations.Add(newLeader);
-                        await AppDbContext.SaveChangesAsync();
-                        await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopLeaderRegistration");
-
-                        //await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
-
-                        NavigationManager.NavigateTo("/registrationConfirmedPage");
-                    }
-                    catch (Exception ex)
-                    {
-                        errorMessage = $"An error occurred: {ex.Message}";
-                    }
+                var identityResult = await UserManagerService.CreateAsync(troopMemUser);
+                if (!identityResult.Succeeded)
+                {
+                    errorMessage = string.Join(", ", identityResult.Errors.Select(e => e.Description));
+                    return;
                 }
 
-                else if (new[] { "Twinklers", "Star", "Junior", "Senior", "Cadet" }.Contains(currentRole))
-                {
+                troopmemberinfo.ApplicationUserId = troopMemUser.Id;
+                troopmemberinfo.TroopMemDateRegistered = DateTime.Now;
 
-                    errorMessage = string.Empty;
-                    successMessage = string.Empty;
+                // ✅ Save TroopLeader
+                await TroopMemberService.Add(troopmemberinfo);
 
-                    if (string.IsNullOrWhiteSpace(currentTroopNumber) ||
-                        string.IsNullOrWhiteSpace(currentFname) ||
-                        string.IsNullOrWhiteSpace(currentMInitial) ||
-                        string.IsNullOrWhiteSpace(currentLname) ||
-                        string.IsNullOrWhiteSpace(currentRole) ||
-                        string.IsNullOrWhiteSpace(currentGradeOrYear) ||
-                        string.IsNullOrWhiteSpace(currentStatus) ||
-                        !currentBirthDate.HasValue ||
-                        string.IsNullOrWhiteSpace(currentBeneficiary) ||
-                        string.IsNullOrWhiteSpace(currentEmail)
-                        )
-                    {
-                        errorMessage = "Please fill in all required fields.";
-                        return;
-                    }
-
-                    int? validatedtroopNumber = null;
-                    if (!string.IsNullOrWhiteSpace(currentTroopNumber))
-                    {
-                        if (int.TryParse(currentTroopNumber, out var parsedNumber))
-                        {
-                            validatedtroopNumber = parsedNumber;
-                        }
-                        else
-                        {
-                            errorMessage = "Invalid troop number.";
-                            return;
-                        }
-                    }
-
-                    try
-                    {
-
-                        var existingLeader = AppDbContext.RegisteredTroopLeaders.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var registerdLeader = AppDbContext.TroopLeaderRegistrations.FirstOrDefault(l => l.LeaderEmail == currentEmail);
-                        var existingMember = AppDbContext.RegisteredTroopMembers.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-                        var registerdMember = AppDbContext.TroopMemberRegistrations.FirstOrDefault(l => l.TroopMemEmail == currentEmail);
-
-                        if (existingMember != null || registerdMember != null)
-                        {
-                            errorMessage = "Your email is already used. Proceed to log-in";
-                            return;
-                        }
-
-                        var newMember = new TroopMemberRegistration
-                        {
-                            TroopMemFname = currentFname,
-                            TroopMemMinitial = currentMInitial,
-                            TroopMemLname = currentLname,
-                            TroopMemTroopNumber = validatedtroopNumber,
-                            TroopMemRole = currentRole,
-                            TroopMemRegStatus = currentStatus,
-                            TroopMemEmail = currentEmail,
-                            TroopMemBeneficiary = currentBeneficiary,
-                            TroopMemBirthdate = currentBirthDate.Value,
-                            TroopMemGradeOrYear = currentGradeOrYear
-                        };
-
-                        AppDbContext.TroopMemberRegistrations.Add(newMember);
-                        await AppDbContext.SaveChangesAsync();
-                        await HubContext.Clients.All.SendAsync("ReceiveUpdate", "TroopMemberRegistration");
-
-                        //await EmailService.SendRegistrationSubmittedEmailAsync(currentEmail, currentFname);
-
-                        NavigationManager.NavigateTo("/registrationConfirmedPage");
-                    }
-                    catch (Exception ex)
-                    {
-                        errorMessage = $"An error occurred: {ex.Message}";
-                    }
-
-
-                }
-                else
-                {
-                    errorMessage = "Invalid role. Please select a valid scout level.";
-                }
-
+                successMessage = "Registration submitted successfully!";
+                NavigationManager.NavigateTo("/RegistrationConfirmedPage");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error submitting registration");
+                errorMessage = $"Failed to submit registration. Please try again {ex.InnerException.Message}";
             }
             finally
             {
                 isSubmitting = false;
             }
+
+
+        }
+        private async Task SubmitLeaderRegistration()
+        {
+            try
+            {
+                if (!await ValidateForm())
+                    return;
+
+                var leaderUser = new ApplicationUser
+                {
+                    MustChangePassword = true,
+                    UserName = leaderinfo.LeaderEmail,
+                    Email = leaderinfo.LeaderEmail,
+                    AccountStatusId = 1
+                };
+
+                var identityResult = await UserManagerService.CreateAsync(leaderUser);
+                if (!identityResult.Succeeded)
+                {
+                    errorMessage = string.Join(", ", identityResult.Errors.Select(e => e.Description));
+                    return;
+                }
+
+                leaderinfo.ApplicationUserId = leaderUser.Id;
+                leaderinfo.LeaderDateRegistered = DateTime.Now;
+
+                // ✅ Save TroopLeader
+                await TroopLeaderService.Add(leaderinfo);
+
+                successMessage = "Registration submitted successfully!";
+                NavigationManager.NavigateTo("/RegistrationConfirmedPage");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error submitting registration");
+                errorMessage = $"Failed to submit registration. Please try again {ex.InnerException.Message}";
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
+
+
         }
 
+        private string GetScoutLevelColor(int? scoutLevelId)
+        {
+            return scoutLevelId switch
+            {
+                1 => "linear-gradient(to left, #f467a4 0%, #f9b8d4 30%, #ffffff 100%)", // twinklers
+                2 => "linear-gradient(to left, #f6e03a 0%, #faf0a0 30%, #ffffff 100%)", // star
+                3 => "linear-gradient(to left, #fdbd23 0%, #fee6a1 30%, #ffffff 100%)", // junior  
+                4 => "linear-gradient(to left, #ff8546 0%, #ffc5a8 30%, #ffffff 100%)", // senior
+                5 => "linear-gradient(to left, #a821e5 0%, #d9a6f2 30%, #ffffff 100%)", // cadet
+                _ => "#ffffff"  // default
+            };
+        }
     }
+
 }

@@ -1,0 +1,253 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject TableDataService<TroopMember> TroopMemberService
+@inject TableDataService<TroopInformation> TroopInformationService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@page "/troopDashboardPage"
+@layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudDataGrid T="TroopInformation"
+                 Items="@FilteredElements"
+                 RowsPerPage="8"
+                 Striped="true"
+                 Hover="true">
+
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Troop Dashboard</MudText>
+            <MudSpacer />
+            <MudTextField @bind-Value="_searchString"
+                          Placeholder="Search"
+                          Adornment="Adornment.Start"
+                          Immediate="true"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Class="mt-0" />
+        </ToolBarContent>
+
+        <Columns>
+            <PropertyColumn Property="x => x.TroopInfoId" Title="ID" Sortable="false" Filterable="false" />
+            <PropertyColumn Property="x => x.TroopNo" Title="Troop Number" Sortable="false" Filterable="false" />
+
+            <TemplateColumn Title="Leader Name">
+                <CellTemplate Context="item">
+                    @if (item.Item.TroopLeader == null || string.IsNullOrWhiteSpace(item.Item.TroopLeader.LeaderLname))
+                    {
+                        <MudChip Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning"/>
+                            Unassigned
+                        </MudChip>
+                    }
+                    else
+                    {
+                        @($"{item.Item.TroopLeader.LeaderFname} {item.Item.TroopLeader.LeaderLname}")
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Troop Name">
+                <CellTemplate Context="item">
+                    @if (item.Item.TroopDetails == null || string.IsNullOrWhiteSpace(item.Item.TroopDetails.TroopName))
+                    {
+                        <MudChip Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" />
+                            Unfilled
+                        </MudChip>
+                    }
+                    else
+                    {
+                        @item.Item.TroopDetails.TroopName
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Troop Members">
+                <CellTemplate Context="item">
+                    @{
+                        // Count only TroopMember records with registered ApplicationUser
+                        memberCount = TroopMemberService.Data?
+                        .Count(m => m.TroopMemTroopNo == item.Item.TroopNo &&
+                        m.ApplicationUser != null &&
+                        m.ApplicationUser.AccountStatusId == 2) ?? 0;
+
+                    }
+
+                    @if (memberCount == 0)
+                    {
+                        <MudChip Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" />
+                            No Registered Members
+                        </MudChip>
+                    }
+                    else
+                    {
+                            <MudChip Color="Color.Secondary"
+                                     Variant="Variant.Outlined" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.People" />
+                                @memberCount Registered
+                            </MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Registration Payment Status" CellStyle="padding-block: 0;">
+                <CellTemplate Context="item">
+                    @{
+                        var memberCount = TroopMemberService.Data?
+                        .Count(m => m.TroopMemTroopNo == item.Item.TroopNo &&
+                        m.ApplicationUser != null &&
+                        m.ApplicationUser.AccountStatusId == 2) ?? 0;
+
+                        var canChangePaymentStatus = item.Item.TroopDetails != null &&
+                        !string.IsNullOrWhiteSpace(item.Item.TroopDetails.TroopName) &&
+                        memberCount > 0;
+                    }
+
+                    <MudSelect Value="item.Item.PaymentStatus"
+                               ValueChanged="@(async (string newValue) => await OnPaymentStatusChanged(newValue, item.Item, canChangePaymentStatus))"
+                               InputClass="pa-2" Lines="2" Style="width:1rem; top:-0.4rem;">
+                        <MudSelectItem Value="@("Paid")">
+                            <MudChip Color="@(item.Item.PaymentStatus == "Paid" ? Color.Success : Color.Default)"
+                                     Variant="Variant.Filled" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Check" />
+                                Paid
+                            </MudChip>
+                        </MudSelectItem>
+                        <MudSelectItem Value="@("Not Paid")">
+                            <MudChip Color="@(item.Item.PaymentStatus == "Not Paid" ? Color.Error : Color.Default)"
+                                     Variant="Variant.Filled" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Close" />
+                                Not Paid
+                            </MudChip>
+                        </MudSelectItem>
+                    </MudSelect>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+
+        <PagerContent>
+            <MudDataGridPager T="TroopInformation" Style="color: #25a129ff;" />
+            <div class="pager-addOn">
+                <MudButton OnClick="OpenAddTroopDialog" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add">
+                    Add Troop
+                </MudButton>
+            </div>
+        </PagerContent>
+   </MudDataGrid>
+</div>
+
+@code {
+
+    private HubConnection? _hubConnection;
+    private string selectedPaymentStatus = string.Empty;
+    private string _searchString = string.Empty;
+    private int memberCount;
+
+    private IEnumerable<TroopInformation> FilteredElements => 
+    (TroopInformationService.Data ?? Enumerable.Empty<TroopInformation>());
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await TroopInformationService.LoadDataAsync(q =>
+           q.Include(t => t.TroopLeader)
+            .Include(t => t.TroopDetails) 
+       );
+
+        await TroopMemberService.LoadDataAsync(q =>
+            q.Include(m => m.ApplicationUser) // This line is crucial
+        );
+
+        // Add SignalR connection for real-time updates
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(TroopInformation) || tableName == nameof(TroopLeader))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await TroopInformationService.LoadDataAsync(q =>
+                       q.Include(t => t.TroopLeader)
+                        .Include(t => t.TroopDetails)
+                    );
+
+                    await TroopMemberService.LoadDataAsync(q =>
+                        q.Include(m => m.ApplicationUser) // This line is crucial
+                    );
+                    StateHasChanged();
+                });
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task OpenAddTroopDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small};
+        var dialog = DialogService.Show<AddTroopDialog>("Add Troop", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var newTroop = (TroopInformation)result.Data;
+                newTroop.PaymentStatus = "Not Paid";
+
+                await TroopInformationService.Add(newTroop);
+                Snackbar.Add($"Successfully added troop {newTroop.TroopNo}!", Severity.Success);
+            }
+            catch (DbUpdateException dbEx)
+            {
+                // Handles database-related errors (e.g., unique constraint violation)
+                Snackbar.Add($"Database Error: {dbEx.InnerException?.Message ?? dbEx.Message}", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                // Handles any other unexpected exceptions
+                Snackbar.Add($"An unexpected error occurred: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OnPaymentStatusChanged(string newValue, TroopInformation troop, bool canChangePaymentStatus)
+    {
+        // If requirements aren't met, prevent changing to "Paid"
+        if (newValue == "Paid" && !canChangePaymentStatus)
+        {
+            Snackbar.Add("Cannot set as Paid: Troop details must be filled and there must be registered members", Severity.Warning);
+            StateHasChanged(); // Force re-render to show correct status
+            return;
+        }
+
+        var oldStatus = troop.PaymentStatus;
+        troop.PaymentStatus = newValue;
+
+        try
+        {
+            await TroopInformationService.Update(troop);
+            Snackbar.Add($"Payment status updated to {newValue} for troop {troop.TroopNo}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            // Revert on error
+            troop.PaymentStatus = oldStatus;
+            Snackbar.Add($"Error updating payment status: {ex.Message}", Severity.Error);
+            StateHasChanged();
+        }
+    }
+
+}
