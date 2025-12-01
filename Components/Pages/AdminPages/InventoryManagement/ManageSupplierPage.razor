@@ -1,0 +1,370 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject TableDataService<ProductSupplier> SupplierService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+@layout Layout.ThemedLayout
+@page "/manageSupplierPage"
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudGrid Class="p-6 ">
+        <!-- Left Side: Add Supplier -->
+        <MudItem xs="12" md="4">
+            <MudPaper Class="rounded-lg shadow-md" Style="padding: 2rem;">
+                <MudForm @ref="form">
+                    <MudText Typo="Typo.h5" Class="mb-3 font-bold text-green-700">Add New Supplier</MudText>
+
+                    <MudTextField T="string"
+                                  @bind-Value="_newSupplier.SupplierName"
+                                  Variant="Variant.Outlined"
+                                  Label="Supplier Name"
+                                  Required="true"
+                                  Class="mb-3" />
+
+                    <MudNumericField T="int?"
+                                     @bind-Value="_newSupplier.SupplierContactNo"
+                                     Variant="Variant.Outlined"
+                                     Label="Contact Number"
+                                     Required="true"
+                                     Class="mb-3"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="+63" />
+
+                    <MudButton OnClick="AddSupplier"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Style="margin-block:1rem;">
+                        Add Supplier
+                    </MudButton>
+
+                    <MudButton OnClick="CancelAddSupplier"
+                               Variant="Variant.Outlined"
+                               Color="Color.Secondary">
+                        Cancel
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Right Side: Manage Suppliers -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="rounded-lg shadow-md" Style="padding:2rem; height:100%; display:flex; flex-direction:column;">
+                <MudText Typo="Typo.h5" Class="mb-3 font-bold text-blue-700">Manage Suppliers</MudText>
+
+                <MudStack Row="true" Spacing="2" Class="mb-4">
+                    <MudTextField T="string"
+                                  Value="_searchText"
+                                  ValueChanged="OnSearchChanged"
+                                  Immediate="true"
+                                  Placeholder="Search by Supplier Name"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="flex-grow"
+                                  Style="margin-top:1rem;" />
+
+                    <MudSwitch @bind-Value="_deleteMode"
+                               Label="Delete Mode"
+                               Color="@(_deleteMode? Color.Error: Color.Success)" />
+                </MudStack>
+
+                <div class="grid-container">
+                    <MudDataGrid T="ProductSupplier"
+                                 Items="@FilteredSuppliers"
+                                 @ref="dataGrid"
+                                 Dense="true"
+                                 Hover="true"
+                                 Striped="true"
+                                 ReadOnly="false"
+                                 Filterable="false"
+                                 Virtualize="true"
+                                 EditMode="DataGridEditMode.Form"
+                                 EditTrigger="DataGridEditTrigger.Manual"
+                                 CommittedItemChanges="OpenEditDialog"
+                                 Style="overflow-x:auto;">
+
+                        <Columns>
+                            <!-- Supplier ID Column -->
+                            <PropertyColumn T="ProductSupplier"
+                                            TProperty="int"
+                                            Property="x => x.SupplierId"
+                                            Title="ID"
+                                            Width="80px"
+                                            Editable="false" />
+
+                            <!-- Supplier Name Column -->
+                            <PropertyColumn T="ProductSupplier"
+                                            TProperty="string"
+                                            Property="x => x.SupplierName"
+                                            Title="Supplier Name"
+                                            Width="250px"
+                                            Editable="true">
+                                <CellTemplate>
+                                    <span style="font-weight:500; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; display:block;">
+                                        @context.Item.SupplierName
+                                    </span>
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudTextField @bind-Value="context.Item.SupplierName"
+                                                  Label="Supplier Name"
+                                                  Required="true"
+                                                  Variant="Variant.Outlined" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <!-- Contact Number Column -->
+                            <PropertyColumn T="ProductSupplier"
+                                            TProperty="int?"
+                                            Property="x => x.SupplierContactNo"
+                                            Title="Contact Number"
+                                            Editable="true">
+                                <CellTemplate>
+                                    @if (context.Item.SupplierContactNo.HasValue)
+                                    {
+                                        @($"+63 {@context.Item.SupplierContactNo.Value.ToString()}")
+                                    }
+                                    else
+                                    {
+                                        <text>-</text>
+                                    }
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudNumericField T="int?"
+                                                     @bind-Value="context.Item.SupplierContactNo"
+                                                     Variant="Variant.Outlined"
+                                                     Label="Contact Number"
+                                                     Adornment="Adornment.Start"
+                                                     AdornmentText="+63" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <!-- Actions Column -->
+                            <TemplateColumn>
+                                <CellTemplate>
+                                    @if (_deleteMode)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => ConfirmDelete(context.Item))" />
+                                    }
+                                    else
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => OpenEditDialog(context.Item))" />
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+
+                        <PagerContent>
+                            <MudDataGridPager T="ProductSupplier" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    // --- Services & References ---
+    private MudForm? form;
+    private MudDataGrid<ProductSupplier>? dataGrid;
+    private HubConnection? _hubConnection;
+
+    // --- Data Collections ---
+    private List<ProductSupplier> AllSuppliers = new();
+    private List<ProductSupplier> FilteredSuppliers = new();
+
+    // --- State Variables ---
+    private ProductSupplier _newSupplier = new();
+    private string _searchText = string.Empty;
+    private bool _deleteMode = false;
+
+    // --- Lifecycle ---
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(ProductSupplier))
+            {
+                await LoadDataAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await SupplierService.LoadDataAsync();
+        AllSuppliers = SupplierService.Data.ToList();
+        FilteredSuppliers = AllSuppliers.ToList();
+    }
+
+    // --- Filtering ---
+    private void ApplyFilters()
+    {
+        var query = AllSuppliers.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            query = query.Where(p =>
+                !string.IsNullOrEmpty(p.SupplierName) &&
+                p.SupplierName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+        }
+
+        FilteredSuppliers = query.ToList();
+        StateHasChanged();
+    }
+
+    // --- Supplier CRUD ---
+    private async Task AddSupplier()
+    {
+        await form!.Validate();
+        if (!form.IsValid)
+        {
+            Snackbar.Add("Please fill in all required fields!", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_newSupplier.SupplierName))
+        {
+            Snackbar.Add("Supplier name is required!", Severity.Warning);
+            return;
+        }
+
+        if (!_newSupplier.SupplierContactNo.HasValue)
+        {
+            Snackbar.Add("Contact number is required!", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var supplierToAdd = new ProductSupplier
+            {
+                SupplierName = _newSupplier.SupplierName,
+                SupplierContactNo = _newSupplier.SupplierContactNo
+            };
+
+            await SupplierService.Add(supplierToAdd);
+            Snackbar.Add($"Supplier '{supplierToAdd.SupplierName}' added successfully!", Severity.Success);
+
+            await LoadDataAsync();
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding supplier: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenEditDialog(ProductSupplier supplier)
+    {
+        var parameters = new DialogParameters
+        {
+            ["EditingSupplier"] = supplier
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = DialogService.Show<EditSupplierDialog>("Edit Supplier", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is ProductSupplier updatedSupplier)
+        {
+            try
+            {
+                // Update the supplier in the database
+                await SupplierService.Update(updatedSupplier);
+                await LoadDataAsync();
+                Snackbar.Add("Supplier updated successfully!", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating supplier: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmDelete(ProductSupplier item)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete '{item.SupplierName}'?",
+            yesText: "Yes",
+            cancelText: "Cancel");
+
+        if (result != true) return;
+
+        try
+        {
+            await SupplierService.Delete(item);
+            await LoadDataAsync();
+
+            Snackbar.Add($"'{item.SupplierName}' deleted successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting supplier: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // --- Form Management ---
+    private void ResetForm()
+    {
+        _newSupplier = new ProductSupplier();
+    }
+
+    private void CancelAddSupplier()
+    {
+        ResetForm();
+        StateHasChanged();
+    }
+
+    // --- Event Handlers ---
+    private async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            try
+            {
+                await _hubConnection.StopAsync();
+                await _hubConnection.DisposeAsync();
+            }
+            catch
+            {
+                // Swallow exceptions to avoid breaking disposal
+            }
+        }
+    }
+}

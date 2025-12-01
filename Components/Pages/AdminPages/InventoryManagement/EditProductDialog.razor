@@ -1,0 +1,190 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+@inject IWebHostEnvironment Env
+
+<MudForm @ref="form" Class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-3">Edit Product</MudText>
+
+    <MudTextField @bind-Value="EditingProduct.ProductName" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+    <MudNumericField @bind-Value="EditingProduct.ProductPrice" Label="Price (₱)" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+
+    <MudSelect T="int?" @bind-Value="EditingProduct.ProductCategoryId" Label="Category" Variant="Variant.Outlined" Required="true">
+        @foreach (var cat in Categories)
+        {
+            <MudSelectItem T="int?" Value="@cat.ProductCategoryId">@cat.ProductCategoryName</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudTextField @bind-Value="EditingProduct.ProductDescription" Label="Description" Lines="3" Variant="Variant.Outlined" Class="mb-3" />
+
+    @if (isImageUploaded)
+    {
+        <MudItem>
+            <MudPaper Style="width:100%; height: 30rem;" Class="d-flex flex-column justify-space-between">
+                <div style="flex-grow: 1; overflow: hidden; max-height: calc(100% - 4rem);">
+                    <MudCardMedia Image="@DisplayImagePath" Style="height: 100%; object-fit: cover;" />
+                </div>
+                <div class="pa-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" OnClick="RemoveImage">
+                        Remove Image
+                    </MudButton>
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+    else
+    {
+        <MudButton Style="padding: 1rem; border: dashed 0.2rem #d6d6d6; border-radius: 1.5rem; justify-content: center; align-items:center">
+            <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+                <ActivatorContent>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Style="font-size: 5rem" />
+                        <MudText Style="font-size: 1.5rem;">Upload your product image here</MudText>
+                    </div>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudButton>
+    }
+
+    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+        <MudButton OnClick="Cancel" Color="Color.Error" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Save" Color="Color.Primary" Variant="Variant.Filled">Save</MudButton>
+    </MudStack>
+</MudForm>
+
+@code {
+    [Parameter] public Product EditingProduct { get; set; } = new();
+    [Parameter] public List<ProductCategory> Categories { get; set; } = new();
+
+    [Inject] private TableDataService<Product> ProductService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm form;
+    private IBrowserFile? _selectedFile;
+    private string? _previewImagePath;
+
+    private bool isImageUploaded => !string.IsNullOrEmpty(_previewImagePath) ||
+                                (!string.IsNullOrEmpty(EditingProduct.ProductImagePath) &&
+                                 EditingProduct.ProductImagePath != "/Products/no-image.png");
+
+    // Derived property for the correct image to display
+    private string DisplayImagePath =>
+        _previewImagePath ??
+        EditingProduct.ProductImagePath ??
+        "/Products/no-image.png";
+
+    private async Task UploadFiles(IBrowserFile files)
+    {
+        var file = files;
+        if (file == null)
+            return;
+
+        _selectedFile = file;
+
+        try
+        {
+            // ✅ Prepare uploads folder
+            var uploadsFolder = Path.Combine(Env.WebRootPath, "uploads", "productImages");
+            Directory.CreateDirectory(uploadsFolder);
+
+            // ✅ Custom file name format
+            var customFileName = $"{Guid.NewGuid()}_Product_{Path.GetFileName(file.Name)}";
+            var filePath = Path.Combine(uploadsFolder, customFileName);
+
+            // ✅ Save file
+            await using var stream = file.OpenReadStream(maxAllowedSize: 10_000_000);
+            await using var fs = new FileStream(filePath, FileMode.Create);
+            await stream.CopyToAsync(fs);
+
+            // ✅ Store new relative path
+            _previewImagePath = $"/uploads/productImages/{customFileName}";
+            // Don't update EditingProduct.ProductImagePath here yet - wait for Save
+
+            Snackbar.Add("Image uploaded successfully!", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error uploading file: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+    private async Task Save()
+    {
+        try
+        {
+            await form.Validate();
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill out all required fields.", Severity.Warning);
+                return;
+            }
+
+            // Store original values for cleanup
+            var originalImagePath = EditingProduct.ProductImagePath;
+            var hasNewImage = !string.IsNullOrEmpty(_previewImagePath);
+
+            // Update product image path if a new image was uploaded
+            if (hasNewImage)
+            {
+                EditingProduct.ProductImagePath = _previewImagePath;
+            }
+
+            // Remove navigation property to prevent tracking issues
+            EditingProduct.ProductCategory = null;
+
+            // Validate category
+            if (EditingProduct.ProductCategoryId == null || EditingProduct.ProductCategoryId <= 0)
+            {
+                Snackbar.Add("Please select a valid product category.", Severity.Warning);
+                return;
+            }
+
+            // Save to DB first
+            await ProductService.Update(EditingProduct);
+
+            // ✅ Now delete the old image AFTER successful save
+            if (hasNewImage && !string.IsNullOrEmpty(originalImagePath) &&
+                originalImagePath != "/Products/no-image.png")
+            {
+                try
+                {
+                    var relativePath = originalImagePath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                    var oldImagePath = Path.Combine(Env.WebRootPath, relativePath);
+
+                    if (File.Exists(oldImagePath))
+                    {
+                        File.Delete(oldImagePath);
+                        Console.WriteLine($"Deleted old image: {oldImagePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail the operation
+                    Console.WriteLine($"Warning: Could not delete old image: {ex.Message}");
+                }
+            }
+
+            Snackbar.Add("Product updated successfully!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred while saving: {ex.InnerException}", Severity.Error);
+        }
+    }
+
+    private void RemoveImage()
+    {
+        _previewImagePath = null;
+        _selectedFile = null;
+        EditingProduct.ProductImagePath = null;
+
+        StateHasChanged(); // force UI refresh
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

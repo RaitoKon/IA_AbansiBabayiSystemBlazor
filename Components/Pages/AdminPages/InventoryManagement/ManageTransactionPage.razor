@@ -1,0 +1,548 @@
+﻿@page "/manageTransactionPage"
+@layout Layout.ThemedLayout
+
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject TableDataService<Product> ProductService
+@inject TableDataService<ProductStock> ProductStockService
+@inject TableDataService<Transaction> TransactionService
+@inject TableDataService<TransactionItem> TransactionItemsService
+@inject TableDataService<ProductIssue> ProductIssueService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+<MudDialogProvider />
+
+<div class="hero-content">
+    <MudPaper Class="rounded-lg shadow-md" Style="padding:2rem;">
+        <MudGrid Style="min-height: 100vh;">
+            <MudItem xs="12">
+                <MudItem Class="d-flex align-center justify-space-between mb-4">
+                <MudText Typo="Typo.h5">
+                    Add Transaction
+                </MudText>
+                    <MudButton OnClick="ToggleCartDrawer"
+                               EndIcon="@Icons.Material.Filled.ShoppingCart"
+                               Variant="Variant.Outlined"
+                               Size="Size.Large"
+                               Color="Color.Primary"
+                               Style="border-radius: 2rem; width: 10rem; height: 3rem;">
+                        See Cart
+                    </MudButton>
+                </MudItem>
+                <MudPaper Class="p-4 mb-6">
+                    <MudDataGrid T="Product"
+                                 Items="@AllProducts"
+                                 Hover="true"
+                                 Striped="true"
+                                 ReadOnly="true"
+                                 Filterable="true"
+                                 FilterCaseSensitivity="DataGridFilterCaseSensitivity.CaseInsensitive"
+                                 Dense="true"
+                                 Virtualize="true"
+                                 ColumnResizeMode="ResizeMode.Column">
+
+                        <Columns>
+                            <!-- Image -->
+                            <TemplateColumn Title="Image" Width="80px">
+                                <CellTemplate Context="context">
+                                    @if (!string.IsNullOrEmpty(context.Item.ProductImagePath))
+                                    {
+                                        <img src="@context.Item.ProductImagePath"
+                                             alt="@context.Item.ProductName"
+                                             style="width:50px;height:50px;object-fit:cover;border-radius:4px;" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:50px;height:50px;background:#eee;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" Color="Color.Default" />
+                                        </div>
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                            <!-- Product Info -->
+                            <PropertyColumn Property="x => x.ProductName" Title="Product Name" />
+                            <PropertyColumn Property="x => x.ProductCategory.ProductCategoryName" Title="Category" />
+                            <PropertyColumn Property="x => x.ProductPrice" Title="Selling Price" CellStyle="font-weight:700;"/>
+
+                            <!-- Current Stock -->
+                            <TemplateColumn Title="Stock Remaining">
+                                <CellTemplate Context="context">
+                                    @{
+                                        var currentStock = GetStockPerProduct(context.Item.ProductId);
+                                    }
+                                    <MudBadge Color="@(currentStock > 0 ? Color.Success : Color.Error)" Dot="true">
+                                        @currentStock
+                                    </MudBadge>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                            <!-- Action -->
+                            <TemplateColumn Title="Action">
+                                <CellTemplate Context="context">
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               Size="Size.Small"
+                                               Class="text-nowrap"
+                                               OnClick="@(() => AddItemToTransaction(context.Item))">
+                                        <MudItem Class="d-flex flex-column align-center flex-nowrap">
+                                            <MudIcon Icon="@Icons.Material.Rounded.AddShoppingCart" Size="Size.Large"/>
+                                            <span style="text-wrap: nowrap">ADD ITEM</span>
+                                        </MudItem>
+                                    </MudButton>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+
+                        <PagerContent>
+                            <MudDataGridPager T="Product" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudPaper>
+
+            </MudItem>
+            <MudDrawer @bind-Open="_openCartDrawer" Width="600px" Anchor="Anchor.End" Variant="DrawerVariant.Temporary">
+                <MudDrawerHeader>
+                    <MudText Typo="Typo.h6">Added Items Summary</MudText>
+                </MudDrawerHeader>
+                <MudPaper Class="rounded-lg shadow-md ma-4 pa-4">
+                    <div style="display: flex; justify-content: space-between; align-items: end; width: 100%;">
+                        <MudText Typo="Typo.subtitle1">@_currentDate.ToString("MMMM dd, yyyy")</MudText>                     
+                        <div style="flex-shrink: 0; margin-bottom: 0.3rem;">
+                            <!-- Prevent MudSelect from expanding -->
+                            <MudSelect ValueChanged="@(async (string val) => await OnTransactionTypeChanged(val))"
+                                       Value="_selectedTransactionType"
+                                       Label="Transaction Type"
+                                       Variant="Variant.Text"
+                                       Style="width: 20rem;">
+                                <MudSelectItem Value="@("Sale")">
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Sell" Color="Color.Primary" />
+                                        <span>Sale</span>
+                                    </div>
+                                </MudSelectItem>
+
+                                <MudSelectItem Value="@("Return")">
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Undo" Color="Color.Secondary" />
+                                        <span>Return</span>
+                                    </div>
+                                </MudSelectItem>
+
+                                <MudSelectItem Value="@("Damage")">
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Color="Color.Error" />
+                                        <span>Damage</span>
+                                    </div>
+                                </MudSelectItem>
+                            </MudSelect>
+                        </div>
+                    </div>
+
+                    @if (_selectedTransactionType != "Sale")
+                    {
+                        <MudTextField Class="mb-4" @bind-Value="_enteredOldTransactionNo" Label="Old Transaction Number" Variant="Variant.Outlined" Adornment="Adornment.End" OnAdornmentClick="LoadOldTransactionItems" AdornmentColor="Color.Primary" AdornmentIcon="@Icons.Material.Filled.Search"/>
+                        <MudTextField T="string" @bind-Value="_enteredProductIssueDescription" Label="Description" Variant="Variant.Outlined" Lines="3" />
+                    }
+                    <MudDivider Class="my-4" />
+
+                    @if (AllAddedItems.Any())
+                    {
+                        @foreach (var item in AllAddedItems)
+                        {
+                            <MudPaper Class="pa-2 mb-2 d-flex align-center justify-space-between" Elevation="4" Style="width: 100%;">
+                                <div style="flex: 1;">
+                                    <MudText Typo="Typo.subtitle2">@item.Product.ProductName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @item.Product.ProductCategory.ProductCategoryName
+                                    </MudText>
+                                </div>
+
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap: 0.5rem;">
+                                    <MudText>₱@item.Product.ProductPrice ×</MudText>
+                                    <MudNumericField @bind-Value="@item.ProductQuantity"
+                                                     Variant="Variant.Outlined"
+                                                     HideSpinButtons="false"
+                                                     Min="1"
+                                                     Style="width: 5rem; text-align: center;"/>
+                                    <MudIconButton OnClick="@(() => RemoveItemFromTransaction(item.Product))" Icon="@Icons.Material.Filled.Delete" Color="Color.Error"/>
+                                </div>
+
+                                <div style="flex: 0 0 140px; text-align: right;">
+                                    <MudText Typo="Typo.subtitle2">Subtotal:</MudText>
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">
+                                        ₱@(item.ProductQuantity* item.Product.ProductPrice)
+                                    </MudText>
+                                </div>
+                            </MudPaper>
+                        }
+
+                        <MudDivider Class="my-4" />
+
+                        <MudText Typo="Typo.subtitle1" Align="Align.End">
+                            <b>Total:</b> @AllAddedItems.Sum(x => x.Product.ProductPrice * x.ProductQuantity)
+                        </MudText>                      
+
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Error">No items added yet.</MudText>
+                    }
+                </MudPaper>
+                <MudSpacer/>
+                <MudPaper Class="rounded-lg shadow-md ma-4 pa-4 sticky">
+                    <MudTextField Class="mb-4" @bind-Value="_enteredTransactionNo" Label="Transaction Number" Variant="Variant.Outlined"/>
+                        <MudButton StartIcon="@Icons.Material.Filled.Payment" OnClick="CompleteTransaction" FullWidth="true" Color="Color.Primary" Variant="Variant.Filled">
+                            Complete Transaction
+                        </MudButton>
+                </MudPaper>
+            </MudDrawer>
+        </MudGrid>
+    </MudPaper>
+</div>
+
+@code {
+    // --- Data ---
+    private List<Product> AllProducts = new();
+    private List<ProductStock> AllStocks = new();
+    private List<TransactionItem> AllAddedItems = new();
+    private List<Transaction> AllTransactions = new();
+
+    // --- SignalR Hub ---
+    private HubConnection? _hubConnection;
+
+    private bool _openCartDrawer;
+    private string _selectedTransactionType = "Sale";
+    private DateTime _currentDate = DateTime.Now;
+    private string _enteredTransactionNo;
+    private string _enteredOldTransactionNo;
+    private string _enteredProductIssueDescription;
+    private double _slideValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+           .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+           .WithAutomaticReconnect()
+           .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(Product) || tableName == nameof(ProductStock))
+            {
+                await LoadDataAsync();
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        // Load all products
+        await ProductService.LoadDataAsync(query =>
+            query.Include(p => p.ProductCategory)
+                 .AsNoTracking()
+                 .OrderBy(p => p.ProductName)
+        );
+
+        // Load all stock records to calculate current stock
+        await ProductStockService.LoadDataAsync(query =>
+            query.AsNoTracking()
+        );
+
+        await TransactionService.LoadDataAsync();
+
+        AllTransactions = TransactionService.Data.ToList();
+        AllProducts = ProductService.Data.ToList();
+        AllStocks = ProductStockService.Data.ToList();
+
+        StateHasChanged();
+    }
+
+    public int GetStockPerProduct(int productId)
+    {
+        var latestStock = AllStocks
+            .Where(s => s.ProductId == productId)
+            .OrderByDescending(s => s.StockDateAdded)
+            .FirstOrDefault();
+
+        return latestStock?.StockMonthlyRemaining ?? 0;
+    }
+
+    private void ToggleCartDrawer()
+    {
+        _openCartDrawer = !_openCartDrawer;
+    }
+
+    private void AddItemToTransaction(Product product)
+    {
+        _selectedTransactionType = "Sale";
+
+        var existingItem = AllAddedItems.FirstOrDefault(item => item.ProductId == product.ProductId);
+        if (existingItem != null)
+        {
+            existingItem.ProductQuantity++;
+            Snackbar.Add($"{product.ProductName} quantity added.", Severity.Success);
+        }
+        else
+        {
+
+            var selectedItem = GetStockPerProduct(product.ProductId);
+
+            if(selectedItem == 0)
+            {
+                Snackbar.Add($"Error: {product.ProductName} has no available stock.", Severity.Error);
+            }
+            else
+            {
+                AllAddedItems.Add(new TransactionItem
+                {
+                    ProductId = product.ProductId,
+                    Product = product,
+                    ProductQuantity = 1
+                });
+
+                Snackbar.Add($"{product.ProductName} added to cart.", Severity.Success);
+            }
+
+        }
+
+    }
+
+    private void RemoveItemFromTransaction(Product product)
+    {
+        var existingItem = AllAddedItems.FirstOrDefault(item => item.ProductId == product.ProductId);
+
+        if (existingItem != null)
+        {
+
+            AllAddedItems.Remove(existingItem);
+            Snackbar.Add($"{product.ProductName} removed from cart.", Severity.Success);
+
+        }
+    }
+
+    private async Task CompleteTransaction()
+    {
+        if (!AllAddedItems.Any())
+        {
+            Snackbar.Add("No items to process.", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedTransactionType))
+        {
+            Snackbar.Add("Please select a transaction type.", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_enteredTransactionNo))
+        {
+            Snackbar.Add("Please enter a transaction number.", Severity.Error);
+            return;
+        }
+
+        if (_selectedTransactionType == "Return" || _selectedTransactionType == "Damage")
+        {
+            if (string.IsNullOrEmpty(_enteredOldTransactionNo))
+            {
+                Snackbar.Add("Please enter the old transaction number.", Severity.Error);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_enteredProductIssueDescription))
+            {
+                Snackbar.Add("Please enter an issue description", Severity.Error);
+                return;
+            }
+        }
+        
+        if (_selectedTransactionType == "Return")
+        {
+            // Find old transaction
+            var oldTransaction = TransactionService.Data
+                .FirstOrDefault(t => t.TransactionNo == _enteredOldTransactionNo);
+
+            // Ensure we have fresh transaction item data
+            await TransactionItemsService.LoadDataAsync();
+
+            var oldItems = TransactionItemsService.Data
+                .Where(i => i.TransactionId == oldTransaction?.TransactionId)
+                .ToList();
+
+            foreach (var item in AllAddedItems)
+            {
+                var oldItem = oldItems.FirstOrDefault(i => i.ProductId == item.ProductId);
+
+                if (oldItem == null)
+                {
+                    Snackbar.Add($"This product was not part of the original transaction.", Severity.Error);
+                    return;
+                }
+
+                if (item.ProductQuantity > oldItem.ProductQuantity)
+                {
+                    Snackbar.Add(
+                        "Invalid return. The number of units returned cannot exceed the number of units originally purchased.",
+                        Severity.Error
+                    );
+                    return;
+                }
+            }
+        }
+
+        var totalAmount = AllAddedItems.Sum(x => x.ProductQuantity * x.Product?.ProductPrice);
+
+        var transaction = new Transaction
+        {
+            TransactionNo = _enteredTransactionNo,
+            TransactionType = _selectedTransactionType,
+            TransactionDateAdded = DateTime.Now,
+            TransactionTotalCost = totalAmount
+        };
+
+        await TransactionService.Add(transaction);
+        await TransactionService.LoadDataAsync();
+
+        foreach (var item in AllAddedItems)
+        {
+            var transactionItem = new TransactionItem
+            {
+                TransactionId = transaction.TransactionId,
+                ProductId = item.ProductId,
+                ProductQuantity = item.ProductQuantity,
+                TransactionSubtotal = item.ProductQuantity * item.Product?.ProductPrice
+            };
+
+            await TransactionItemsService.Add(transactionItem);
+            await TransactionItemsService.LoadDataAsync(); // Ensure ID is generated
+
+            if (_selectedTransactionType == "Return" || _selectedTransactionType == "Damage")
+            {
+                var issue = new ProductIssue
+                {
+                    TransactionItemsId = transactionItem.TransactionItemsId,
+                    OldTransactionNo = _enteredOldTransactionNo,
+                    Description = _enteredProductIssueDescription,
+                };
+
+                await ProductIssueService.Add(issue);
+                await ProductIssueService.LoadDataAsync();
+            }
+
+            var latestStock = AllStocks
+                .Where(s => s.ProductId == item.ProductId)
+                .OrderByDescending(s => s.StockDateAdded)
+                .FirstOrDefault();
+
+            if (latestStock == null)
+            {
+                // Create new stock entry if none exists
+                latestStock = new ProductStock
+                {
+                    ProductId = item.ProductId,
+                    StockMonthlyRemaining = 0,
+                    StockDateAdded = DateTime.Now
+                };
+
+                await ProductStockService.Add(latestStock);
+            }
+
+            if (_selectedTransactionType == "Sale")
+                latestStock.StockMonthlyRemaining -= item.ProductQuantity ?? 0;
+
+            else if (_selectedTransactionType == "Return")
+                latestStock.StockMonthlyRemaining += item.ProductQuantity ?? 0;
+
+            // Save
+            await ProductStockService.Update(latestStock);
+
+            await ProductStockService.LoadDataAsync();
+        }
+
+        // // 5️⃣ Commit all changes
+        // await ProductService.DbContext.SaveChangesAsync();
+
+
+        AllAddedItems.Clear();
+        _enteredTransactionNo = "";
+        _selectedTransactionType = null;
+
+        Snackbar.Add("Transaction completed successfully!", Severity.Success);
+    }
+
+    private async Task OnTransactionTypeChanged(string newType)
+    {
+        _selectedTransactionType = newType;
+        _enteredOldTransactionNo = "";
+
+        // Clear the cart whenever type changes
+        AllAddedItems.Clear();
+
+        // Only for Return or Damage, you might want to prompt to enter old transaction
+        if (_selectedTransactionType == "Return" || _selectedTransactionType == "Damage")
+        {
+            _enteredTransactionNo = string.Empty; // Reset Old Transaction No field
+            Snackbar.Add("Please enter the old transaction number to load previous items.", Severity.Info);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadOldTransactionItems()
+    {
+        if (string.IsNullOrWhiteSpace(_enteredOldTransactionNo))
+        {
+            Snackbar.Add("Please enter a valid transaction number.", Severity.Error);
+            return;
+        }
+
+        // Find the transaction
+        var oldTransaction = TransactionService.Data.FirstOrDefault(t => t.TransactionNo == _enteredOldTransactionNo);
+
+        if (oldTransaction == null)
+        {
+            Snackbar.Add("Transaction not found.", Severity.Error);
+            return;
+        }
+        else if (oldTransaction.TransactionType != "Sale")
+        {
+            Snackbar.Add("Transaction is not a sale record.", Severity.Error);
+            return;
+        }
+
+        // Load items from that transaction
+        await TransactionItemsService.LoadDataAsync(q => q
+            .Include(i => i.Product)
+            .ThenInclude(p => p.ProductCategory)
+            .Where(i => i.TransactionId == oldTransaction.TransactionId)
+        );
+
+        AllAddedItems = TransactionItemsService.Data.Select(i => new TransactionItem
+        {
+            TransactionItemsId = i.TransactionItemsId,
+            ProductId = i.ProductId,
+            Product = i.Product,
+            ProductQuantity = i.ProductQuantity
+        }).ToList();
+
+        Snackbar.Add("Old transaction items loaded.", Severity.Success);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.StopAsync();
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

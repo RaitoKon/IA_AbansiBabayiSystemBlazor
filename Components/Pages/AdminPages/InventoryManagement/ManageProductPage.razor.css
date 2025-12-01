@@ -1,0 +1,39 @@
+﻿
+.page-title {
+    margin-left: 1rem;
+    padding: 2rem;
+}
+
+.hero-content {
+    padding: 1rem;
+    box-sizing: border-box;
+    background-image: url(images/BG-Base1.png);
+    background-size: cover;
+    height: 100%;
+}
+
+.pager-addOn {
+    position: absolute;
+    display: flex;
+    gap: 2rem;
+    top: 0.5rem;
+    margin-left: 4.5rem;
+}
+
+.product-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.no-image-placeholder {
+    width: 50px;
+    height: 50px;
+    background: #eee;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

@@ -1,0 +1,440 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject TableDataService<ProductStock> ProductStockService
+@inject TableDataService<ProductCategory> ProductCategoryService
+@inject TableDataService<Product> ProductService
+@inject TableDataService<ProductSupplier> ProductSupplierService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+@layout Layout.ThemedLayout
+@page "/manageProductStockPage"
+
+<MudDialogProvider />
+<div class="hero-content">
+    <MudGrid Class="p-6">       
+        <!-- Right Side: Manage Products -->
+        <MudItem xs="12" md="12">
+            <MudPaper Class="rounded-lg shadow-md" Style="padding:2rem; height:100%; display:flex; flex-direction:column;">
+
+                <MudItem Class="d-flex mb-3">
+                    <MudText Typo="Typo.h5">Manage Stocks</MudText>
+                    <MudSpacer/>
+                    <MudButton OnClick="ToggleAddStockDrawer"
+                               StartIcon="@Icons.Material.Filled.AddCircle"
+                               Variant="Variant.Outlined"
+                               Size="Size.Large"
+                               Color="Color.Primary"
+                               Style="border-radius: 2rem; width: 10rem; height: 3rem; white-space: nowrap">
+                        Add Stocks
+                    </MudButton>
+                </MudItem>
+
+                <div class="grid-container">
+                    <MudDataGrid T="ProductStock" 
+                                 Items="@Stock" 
+                                 @ref="dataGrid"
+                                 Dense="true" 
+                                 Striped="true" 
+                                 ReadOnly="false"
+                                 Filterable="false" 
+                                 Virtualize="true"
+                                 RowsPerPage="8">
+                                 
+                        <Columns>
+                            <PropertyColumn Property="x => x.StockDateAdded" Title="Date">
+                                <CellTemplate Context="ctx">
+                                    @(ctx.Item.StockDateAdded?.ToString("MMMM dd, yyyy h:mm ") +
+                                    ctx.Item.StockDateAdded?.ToString("tt").ToUpper())
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Product.ProductName" Title="Product Name" Sortable="true" Filterable="true"/>
+                            <PropertyColumn Property="x => x.Product.ProductCategory.ProductCategoryName" Title="Category" Sortable="true" Filterable="true" />
+                            <PropertyColumn Property="x => x.Supplier.SupplierName" Title="Supplier" />
+                            <PropertyColumn Property="x => x.PurchasePrice" Title="Purchase Price" Sortable="false" CellStyle="font-weight: 700;"/>
+                            <!-- Stock Movement Section -->
+                            <TemplateColumn Title="Stock Movement" Sortable="false">
+                                <CellTemplate>
+                                    <div style="display: flex; flex-direction: column; gap: 2px; padding: 4px 0;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                                            <span style="color: #667;">Before:</span>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.StockBefore</MudText>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                                            <span style="color: #1976d2;">Added:</span>
+                                            <MudText Typo="Typo.body2" Style="color: #1976d2; font-weight: 600;">+@context.Item.StockAdded</MudText>
+                                        </div>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                            <!-- Current Stock Section -->
+                            <TemplateColumn Title="Total Stock" Sortable="false">
+                                <CellTemplate>
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                        <MudBadge Color="Color.Primary" Dot="true">
+                                            <MudText Typo="Typo.h6" Style="font-weight: 700;">@context.Item.StockTotal</MudText>
+                                        </MudBadge>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                            <TemplateColumn Title="Monthly Remaining" Sortable="false">
+                                <CellTemplate>
+                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                                        <MudBadge Color="Color.Primary" Dot="true">
+                                            <MudText Typo="Typo.h6" Style="font-weight: 700;">@context.Item.StockMonthlyRemaining</MudText>
+                                        </MudBadge>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+
+                        <PagerContent>
+                            <MudDataGridPager T="ProductStock" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </div>
+
+                <MudDrawer @bind-Open="@_openAddStockDrawer" Anchor="Anchor.End" Elevation="1" Variant="@DrawerVariant.Temporary" Width="400px">
+                    <MudDrawerHeader>
+                        <MudText Typo="Typo.h6">Add New Stock Record</MudText>
+                    </MudDrawerHeader>
+                    <MudGrid Class="pa-6" Spacing="4">
+                        <MudItem xs="12">
+                            <MudAutocomplete T="ProductCategory"
+                                             @bind-Value="_selectedCategory"
+                                             SearchFunc="SearchCategory"
+                                             ToStringFunc="@(cat => cat?.ProductCategoryName ?? "")"
+                                             Variant="Variant.Outlined"
+                                             Label="Select Category"
+                                             Clearable="true"
+                                             Class="w-100" 
+                                             OnClearButtonClick="ClearInput"
+                                             MaxItems="50"/>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudAutocomplete T="Product"
+                                             Value="_selectedProduct"
+                                             ValueChanged="OnProductSelected"
+                                             SearchFunc="SearchProduct"
+                                             ToStringFunc="@(product => product?.ProductName ?? "")"
+                                             Variant="Variant.Outlined"
+                                             Label="Select Product"
+                                             Clearable="true"
+                                             Class="w-100"
+                                             MaxItems="350" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudSelect T="ProductSupplier"
+                                       @bind-Value="_selectedSupplier"
+                                       Label="Select Supplier" 
+                                       Variant="Variant.Outlined">
+                                @foreach (var supplier in Supplier)
+                                {
+                                    <MudSelectItem Value="@supplier">@supplier.SupplierName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudNumericField @bind-Value="_inputPurchasePrice"
+                                             Label="Purchase Price"
+                                             Variant="Variant.Outlined"
+                                             Culture="@(new System.Globalization.CultureInfo("en-PH"))"
+                                             Format="C2" />
+
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudNumericField @bind-Value="_inputStockAdded" 
+                                             Label="Quantity" 
+                                             Variant="Variant.Outlined" 
+                                             Min="0"/>
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end">
+                            <MudButton OnClick="SubmitNewStockRecord" Color="Color.Primary" Variant="Variant.Filled">
+                                Submit
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudDrawer>
+
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    private MudDataGrid<ProductStock>? dataGrid;
+    private HubConnection? _hubConnection;
+
+    private List<ProductStock> Stock = new();
+    private List<ProductCategory> Category = new();
+    private List<Product> Products = new();
+    private List<ProductSupplier> Supplier = new();
+
+    private bool _openAddStockDrawer = false;
+    private ProductCategory? _selectedCategory;
+    private Product? _selectedProduct;
+    private ProductSupplier? _selectedSupplier;
+    private decimal _inputPurchasePrice;
+    private int _inputStockAdded;
+    // --- Lifecycle ---
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(ProductStock))
+            {
+                await LoadDataAsync();
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await ProductStockService.LoadDataAsync(query =>
+          query.Include(ps => ps.Product)
+               .ThenInclude(cat => cat.ProductCategory)
+               .Include(ps => ps.Supplier)
+               .AsNoTracking()
+               .OrderByDescending(ps => ps.StockDateAdded)
+        );
+
+        await ProductCategoryService.LoadDataAsync();
+        await ProductService.LoadDataAsync();
+        await ProductSupplierService.LoadDataAsync();
+
+        Stock = ProductStockService.Data.ToList();
+        Category = ProductCategoryService.Data.ToList();
+        Products = ProductService.Data.ToList();
+        Supplier = ProductSupplierService.Data.ToList();
+
+        await TriggerLowStock();
+    }
+
+    private async Task TriggerLowStock()
+    {
+        int lowStockThreshold = 50;
+
+        var productsWithStockInfo = Products
+            .Select(product =>
+            {
+                // Get latest stock record for this product (if exists)
+                var latestStock = Stock
+                    .Where(s => s.ProductId == product.ProductId)
+                    .OrderByDescending(s => s.StockDateAdded)
+                    .FirstOrDefault();
+
+                return new
+                {
+                    Product = product,
+                    Remaining = latestStock?.StockMonthlyRemaining ?? 0
+                };
+            })
+            .ToList();
+
+        // Filter products that are low in stock
+        var lowStockProducts = productsWithStockInfo
+            .Where(p => p.Remaining <= lowStockThreshold)
+            .ToList();
+
+        // 1. Danger warning if 10+ products are low
+        if (lowStockProducts.Count > 10)
+        {
+            Snackbar.Add(
+                "High Level Warning! More than 10 products are low in stock!",
+                Severity.Error
+            );
+            return;
+        }
+
+        // 2. Individual product warnings
+        foreach (var item in lowStockProducts)
+        {
+            Snackbar.Add(
+                $"⚠️ Low stock: {item.Product.ProductName} — Remaining: {item.Remaining}",
+                Severity.Warning
+            );
+        }
+    }
+
+
+    private async Task ToggleAddStockDrawer()
+    {
+        _openAddStockDrawer = !_openAddStockDrawer;
+    }
+
+    private async Task<IEnumerable<ProductCategory>> SearchCategory(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return Category; // Return ALL categories when empty
+        }
+
+        return Category.Where(x => x.ProductCategoryName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    private Task<IEnumerable<Product>> SearchProduct(string value, CancellationToken token)
+    {
+        IEnumerable<Product> filteredProducts;
+
+        if (_selectedCategory == null)
+        {
+            // No category selected → show all products
+            filteredProducts = Products;
+        }
+        else
+        {
+            // Filter based on category
+            filteredProducts = Products
+                .Where(p => p.ProductCategoryId == _selectedCategory.ProductCategoryId);
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Task.FromResult(filteredProducts);
+        }
+
+        var result = filteredProducts
+            .Where(p => p.ProductName.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+
+        return Task.FromResult(result);
+    }
+
+    private async Task OnProductSelected(Product? selectedProduct)
+    {
+        _selectedProduct = selectedProduct;
+
+        if (selectedProduct != null && _selectedCategory == null)
+        {
+            // Auto-set the category based on the selected product
+            _selectedCategory = Category.FirstOrDefault(c => c.ProductCategoryId == selectedProduct.ProductCategoryId);
+        }
+    }
+
+    private async Task ClearInput()
+    {
+        _selectedCategory = null;
+        _selectedProduct = null;
+    }
+
+    private async Task SubmitNewStockRecord()
+    {
+        // Step 1: Validate first
+        if (!ValidateStockSubmit())
+            return;
+
+        try
+        {
+            var lastStock = Stock
+                .Where(s => s.ProductId == _selectedProduct!.ProductId)
+                .OrderByDescending(s => s.StockDateAdded)
+                .FirstOrDefault();
+
+            var newStock = new ProductStock
+            {
+                ProductId = _selectedProduct!.ProductId,
+                SupplierId = _selectedSupplier!.SupplierId,
+                PurchasePrice = _inputPurchasePrice,
+                StockBefore = lastStock?.StockMonthlyRemaining ?? 0,       // remaining from previous state
+                StockAdded = _inputStockAdded,
+                StockTotal = (lastStock?.StockMonthlyRemaining ?? 0) + _inputStockAdded,  // new total remaining
+                StockMonthlyRemaining = (lastStock?.StockMonthlyRemaining ?? 0) + _inputStockAdded, // continuous update
+                StockDateAdded = DateTime.Now
+            };
+
+            // Step 3: Save to database
+            await ProductStockService.Add(newStock);
+            Snackbar.Add("Stock record successfully added!", Severity.Success);
+
+            // Step 4: Refresh data
+            await LoadDataAsync();
+
+            // Step 5: Reset form and close drawer
+            ClearForm();
+            _openAddStockDrawer = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving stock record: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private bool ValidateStockSubmit()
+    {
+        if (_selectedCategory == null)
+        {
+            Snackbar.Add("Please select a product category.", Severity.Warning);
+            return false;
+        }
+
+        if (_selectedProduct == null)
+        {
+            Snackbar.Add("Please select a product.", Severity.Warning);
+            return false;
+        }
+
+        if (_selectedSupplier == null)
+        {
+            Snackbar.Add("Please select a supplier.", Severity.Warning);
+            return false;
+        }
+
+        if (_inputPurchasePrice <= 0)
+        {
+            Snackbar.Add("Please enter a valid purchase price greater than zero.", Severity.Error);
+            return false;
+        }
+
+        if (_inputStockAdded <= 0)
+        {
+            Snackbar.Add("Please enter a valid stock quantity greater than zero.", Severity.Error);
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private void ClearForm()
+    {
+        _selectedCategory = null;
+        _selectedProduct = null;
+        _selectedSupplier = null;
+        _inputPurchasePrice = 0;
+        _inputStockAdded = 0;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            try
+            {
+                await _hubConnection.StopAsync();
+                await _hubConnection.DisposeAsync();
+            }
+            catch
+            {
+                // Swallow exceptions to avoid breaking disposal
+            }
+        }
+    }
+}

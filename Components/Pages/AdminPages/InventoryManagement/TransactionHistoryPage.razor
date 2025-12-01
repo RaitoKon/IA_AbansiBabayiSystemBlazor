@@ -1,0 +1,177 @@
+﻿@page "/TransactionHistoryPage"
+@layout Layout.ThemedLayout
+
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject TableDataService<Product> ProductService
+@inject TableDataService<ProductStock> ProductStockService
+@inject TableDataService<Transaction> TransactionService
+@inject TableDataService<TransactionItem> TransactionItemsService
+@inject TableDataService<ProductIssue> ProductIssueService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+<MudDialogProvider />
+
+<div class="hero-content">
+    <MudPaper Class="rounded-lg shadow-md" Style="padding:2rem;">
+        <MudGrid Style="min-height: 100vh;">
+            <MudItem xs="12">
+                <MudItem Class="d-flex align-center justify-space-between mb-4">
+                    <MudText Typo="Typo.h5">
+                        Transaction History
+                    </MudText>
+                </MudItem>
+                <MudPaper Class="p-4 mb-6">
+                    <MudDataGrid T="Transaction"
+                                 Items="@AllTransaction"
+                                 Hover="true"
+                                 Striped="true"
+                                 ReadOnly="true"
+                                 Filterable="true"
+                                 FilterCaseSensitivity="DataGridFilterCaseSensitivity.CaseInsensitive"
+                                 Virtualize="true"
+                                 ColumnResizeMode="ResizeMode.Column">
+
+                        <Columns>
+                            
+                            <PropertyColumn Property="t => t.TransactionId" Title="ID" Sortable="false" Filterable="false"/>
+                            <PropertyColumn Property="x => x.TransactionDateFormatted" Title="Date Time">
+                                <CellTemplate>
+                                    @context.Item.TransactionDateFormatted
+                                </CellTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="t => t.TransactionNo" Title="Transaction Number" />
+                            <PropertyColumn Property="t => t.TransactionType" Title="Type"
+                                            Sortable="true"
+                                            Filterable="true">
+                                <CellTemplate Context="t">
+                                    @{
+                                        var type = t.Item.TransactionType;
+                                        Color chipColor = type switch
+                                        {
+                                            "Sale" => Color.Success,
+                                            "Return" => Color.Warning,
+                                            "Damage" => Color.Error,
+                                            _ => Color.Default
+                                        };
+                                        string chipIcon = type switch
+                                        {
+                                            "Sale" => Icons.Material.Filled.ShoppingCart,
+                                            "Return" => Icons.Material.Filled.Undo,
+                                            "Damage" => Icons.Material.Filled.ReportProblem,
+                                            _ => Icons.Material.Filled.Info
+                                        };
+                                    }
+                                    <MudChip Color="@chipColor" Icon="@chipIcon" Variant="Variant.Filled" Size="Size.Small">
+                                        @type
+                                    </MudChip>
+                                </CellTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="t => t.TransactionTotalCost" Title="Total Cost" />
+                            <TemplateColumn Title="Action" Context="t">
+                                <CellTemplate>
+                                    <MudButton Style="white-space: nowrap;"
+                                               Variant="Variant.Outlined"
+                                               EndIcon="@Icons.Material.Filled.ReadMore"
+                                               Size="Size.Small"
+                                               Color="Color.Secondary"
+                                               OnClick="@(() => OpenTransactionDetails(t.Item))">
+                                        See Details
+                                    </MudButton>
+
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                        </Columns>
+
+                        <PagerContent>
+                            <MudDataGridPager T="Transaction" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudPaper>
+
+            </MudItem>
+           
+        </MudGrid>
+    </MudPaper>
+</div>
+
+@code {
+
+    // --- SignalR Hub ---
+    private HubConnection? _hubConnection;
+
+    private List<Transaction> AllTransaction = new();
+
+    private DateTime? _selectedDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+           .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+           .WithAutomaticReconnect()
+           .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(Transaction))
+            {
+                await LoadDataAsync();
+                StateHasChanged();
+            }
+
+            if (tableName == nameof(ProductIssue))
+            {
+                await ProductIssueService.LoadDataAsync();
+                StateHasChanged();
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await TransactionService.LoadDataAsync(t => t.OrderByDescending(p => p.TransactionDateAdded));
+
+        AllTransaction = TransactionService.Data.ToList();
+
+        await ProductIssueService.LoadDataAsync();
+    }
+
+    private Task OpenTransactionDetails(Transaction transaction)
+    {
+        var parameters = new DialogParameters
+        {
+            { "TransactionData", transaction } 
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            CloseButton = true,
+            FullWidth = true
+        };
+
+        return DialogService.ShowAsync<TransactionDetailsDialog>(null, parameters, options);
+    }
+
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.StopAsync();
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

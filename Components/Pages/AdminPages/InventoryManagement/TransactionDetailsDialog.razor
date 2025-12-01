@@ -1,0 +1,130 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using MudBlazor
+
+@inject TableDataService<TransactionItem> TransactionItemsService
+@inject TableDataService<ProductIssue> ProductIssueService
+
+<MudDialog TitleClass="pb-0">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            Transaction Detail
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudDivider Class="my-2" />
+        <MudGrid>
+            <!-- Column 1 -->
+            <MudItem xs="12" sm="6" Class="pt-6 pb-4">
+                <MudText><b>Record No:</b> @TransactionData.TransactionId</MudText>
+                <MudText>
+                    <b>Date:</b>
+                    @(TransactionData.TransactionDateAdded?.ToString("MMMM dd, yyyy") + " " + TransactionData.TransactionDateAdded?.ToString("h:mm tt").ToUpper())
+                </MudText>
+            </MudItem>
+
+            <!-- Column 2 -->
+            <MudItem xs="12" sm="6" Class="pt-6 pb-4">
+                <MudText><b>Transaction No:</b> @TransactionData.TransactionNo</MudText>
+                <MudText>
+                    <b>Type:</b>
+                    @{
+                        var type = TransactionData.TransactionType;
+
+                        Color chipColor = type switch
+                        {
+                            "Sale" => Color.Success,
+                            "Return" => Color.Warning,
+                            "Damage" => Color.Error,
+                            _ => Color.Default
+                        };
+
+                        string chipIcon = type switch
+                        {
+                            "Sale" => Icons.Material.Filled.ShoppingCart,
+                            "Return" => Icons.Material.Filled.Undo,
+                            "Damage" => Icons.Material.Filled.ReportProblem,
+                            _ => Icons.Material.Filled.Info
+                        };
+                    }
+
+                    <MudChip T="string" Color="@chipColor" Icon="@chipIcon" Variant="Variant.Filled" Size="Size.Small" Class="ma-0 ml-2">
+                        @type
+                    </MudChip>
+                </MudText>
+            </MudItem>
+        </MudGrid>
+        @if (TransactionData.TransactionType == "Return" || TransactionData.TransactionType == "Damage")
+        {
+            <MudDivider Class="my-2" />
+        }
+        <MudGrid>
+            @if (TransactionData.TransactionType == "Return" || TransactionData.TransactionType == "Damage")
+            {
+                @foreach (var issue in RelatedProductIssues)
+                {
+                    <MudItem xs="12" sm="6" Class="pt-5">
+                        <MudText><b>Description:</b> @issue.Description</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Class="pt-5">
+                        <MudText><b>Old Transaction No:</b> @issue.OldTransactionNo</MudText>
+                    </MudItem>
+                }
+            }
+        </MudGrid>
+        <MudItem Class="my-4">
+            <MudDivider Class="my-4" />
+            <MudTable T="TransactionItem" Items="@AllTransactionItems" Hover="true" Striped="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>Product Name</MudTh>
+                    <MudTh>Price</MudTh>
+                    <MudTh>Quantity</MudTh>
+                    <MudTh>Subtotal</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <div style="flex: 1;">
+                            <MudText Typo="Typo.subtitle2">@context.Product?.ProductName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @context.Product?.ProductCategory?.ProductCategoryName
+                            </MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd>@context.Product.ProductPrice</MudTd>
+                    <MudTd>@context.ProductQuantity</MudTd>
+                    <MudTd>@context.TransactionSubtotal</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+
+        <MudDivider Class="my-2" />
+        <MudText Class="my-2" Align="Align.End"><b>Total Cost:</b> @TransactionData.TransactionTotalCost</MudText>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter] public Transaction TransactionData { get; set; } = default!;
+
+    private List<TransactionItem> AllTransactionItems = new();
+    private List<ProductIssue> RelatedProductIssues = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load transaction items for this transaction only
+        await TransactionItemsService.LoadDataAsync(q =>
+            q.Where(ti => ti.TransactionId == TransactionData.TransactionId)
+             .Include(ti => ti.Product)
+             .ThenInclude(p => p.ProductCategory)
+        );
+
+        AllTransactionItems = TransactionItemsService.Data.ToList();
+
+        // Load ProductIssues completely, then filter in memory
+        await ProductIssueService.LoadDataAsync();
+
+        var itemIds = AllTransactionItems.Select(ti => ti.TransactionItemsId).ToList();
+        RelatedProductIssues = ProductIssueService.Data
+            .Where(pi => pi.TransactionItemsId.HasValue && itemIds.Contains(pi.TransactionItemsId.Value))
+            .ToList();
+    }
+}

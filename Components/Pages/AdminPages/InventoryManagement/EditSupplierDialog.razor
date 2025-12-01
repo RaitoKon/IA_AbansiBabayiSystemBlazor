@@ -1,0 +1,90 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="editForm">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="SupplierCopy.SupplierName"
+                                  Label="Supplier Name"
+                                  Required="true"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudNumericField T="int?"
+                                     @bind-Value="SupplierCopy.SupplierContactNo"
+                                     Variant="Variant.Outlined"
+                                     Label="Contact Number"
+                                     Required="true"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="+63"
+                                     Class="mb-3" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Secondary">
+            Cancel
+        </MudButton>
+        <MudButton OnClick="Save" Variant="Variant.Filled" Color="Color.Primary">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ProductSupplier EditingSupplier { get; set; } = null!;
+
+    private MudForm? editForm;
+    private ProductSupplier SupplierCopy { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        // Create a copy to avoid direct mutation of the parameter
+        if (EditingSupplier != null)
+        {
+            SupplierCopy = new ProductSupplier
+            {
+                SupplierId = EditingSupplier.SupplierId,
+                SupplierName = EditingSupplier.SupplierName,
+                SupplierContactNo = EditingSupplier.SupplierContactNo
+            };
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Save()
+    {
+        await editForm!.Validate();
+
+        if (editForm.IsValid)
+        {
+            if (string.IsNullOrWhiteSpace(SupplierCopy.SupplierName))
+            {
+                Snackbar.Add("Supplier name is required!", Severity.Warning);
+                return;
+            }
+
+            if (!SupplierCopy.SupplierContactNo.HasValue)
+            {
+                Snackbar.Add("Contact number is required!", Severity.Warning);
+                return;
+            }
+
+            // Return the updated copy
+            MudDialog.Close(DialogResult.Ok(SupplierCopy));
+        }
+    }
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = null!;
+}

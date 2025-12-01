@@ -28,9 +28,15 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
-    public virtual DbSet<ProductPurchase> ProductPurchases { get; set; }
+    public virtual DbSet<ProductIssue> ProductIssues { get; set; }
 
-    public virtual DbSet<ProductSale> ProductSales { get; set; }
+    public virtual DbSet<TransactionItem> TransactionItems { get; set; }
+
+    public virtual DbSet<ProductStock> ProductStocks { get; set; }
+
+    public virtual DbSet<ProductSupplier> ProductSuppliers { get; set; }
+
+    public virtual DbSet<Transaction> Transactions { get; set; }
 
     public virtual DbSet<TroopDetail> TroopDetails { get; set; }
 
@@ -122,18 +128,19 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.ToTable("Product");
+            entity.HasKey(e => e.ProductId).HasName("PK_Product");
 
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.HasIndex(e => e.ProductCategoryId, "IX_Product_ProductCategoryID");
+
             entity.Property(e => e.ProductCategoryId).HasColumnName("ProductCategoryID");
             entity.Property(e => e.ProductDescription)
-                .HasMaxLength(250)
+                .HasMaxLength(500)
                 .IsUnicode(false);
             entity.Property(e => e.ProductImagePath)
-                .HasMaxLength(50)
+                .HasMaxLength(500)
                 .IsUnicode(false);
             entity.Property(e => e.ProductName)
-                .HasMaxLength(100)
+                .HasMaxLength(150)
                 .IsUnicode(false);
             entity.Property(e => e.ProductPrice).HasColumnType("decimal(8, 2)");
 
@@ -146,40 +153,67 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.ToTable("ProductCategory");
 
-            entity.Property(e => e.ProductCategoryId).HasColumnName("ProductCategoryID");
             entity.Property(e => e.ProductCategoryName)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<ProductIssue>(entity =>
+        {
+            entity.HasKey(e => e.ProductIssueId).HasName("PK_Returns");
+
+            entity.ToTable("ProductIssue");
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.OldTransactionNo)
                 .HasMaxLength(50)
                 .IsUnicode(false);
         });
 
-        modelBuilder.Entity<ProductPurchase>(entity =>
+        modelBuilder.Entity<TransactionItem>(entity =>
         {
-            entity.Property(e => e.ProductPurchaseId).HasColumnName("ProductPurchaseID");
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.ProductPurchaseDate).HasColumnType("datetime");
-            entity.Property(e => e.ProductPurchasePrice).HasColumnType("decimal(8, 2)");
-            entity.Property(e => e.TotalCost)
-                .HasComputedColumnSql("([ProductPurchaseQuantity]*[ProductPurchasePrice])", false)
-                .HasColumnType("decimal(19, 2)");
+            entity.HasKey(e => e.TransactionItemsId).HasName("PK_Transactions");
 
-            entity.HasOne(d => d.Product).WithMany(p => p.ProductPurchases)
-                .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK_ProductPurchases_Product");
+            entity.Property(e => e.TransactionSubtotal).HasColumnType("decimal(8, 2)");
         });
 
-        modelBuilder.Entity<ProductSale>(entity =>
+        modelBuilder.Entity<ProductStock>(entity =>
         {
-            entity.Property(e => e.ProductSaleId).HasColumnName("ProductSaleID");
-            entity.Property(e => e.ProductId).HasColumnName("ProductID");
-            entity.Property(e => e.ProductSaleDate).HasColumnType("datetime");
-            entity.Property(e => e.ProductSalePrice).HasColumnType("decimal(8, 2)");
-            entity.Property(e => e.TotalCost)
-                .HasComputedColumnSql("([ProductSaleQuantity]*[ProductSalePrice])", true)
-                .HasColumnType("decimal(19, 2)");
+            entity.HasKey(e => e.StockId);
 
-            entity.HasOne(d => d.Product).WithMany(p => p.ProductSales)
-                .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK_ProductSales_Product");
+            entity.ToTable("ProductStock");
+
+            entity.Property(e => e.PurchasePrice).HasColumnType("decimal(8, 2)");
+            entity.Property(e => e.StockDateAdded).HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<ProductSupplier>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId);
+
+            entity.ToTable("ProductSupplier");
+
+            entity.Property(e => e.SupplierName)
+                .HasMaxLength(150)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.HasKey(e => e.TransactionId).HasName("PK_TransactionDetails");
+
+            entity.ToTable("Transaction");
+
+            entity.Property(e => e.TransactionDateAdded).HasColumnType("datetime");
+            entity.Property(e => e.TransactionTotalCost).HasColumnType("decimal(8, 2)");
+            entity.Property(e => e.TransactionNo)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.TransactionType)
+                .HasMaxLength(50)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<TroopDetail>(entity =>

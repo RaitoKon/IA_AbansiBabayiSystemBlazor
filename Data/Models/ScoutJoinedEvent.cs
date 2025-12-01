@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace IA_AbansiBabayiSystemBlazor.Data;
+namespace IA_AbansiBabayiSystemBlazor.Data.Models;
 
 public partial class ScoutJoinedEvent
 {

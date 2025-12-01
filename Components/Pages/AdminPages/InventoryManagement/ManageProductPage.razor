@@ -1,0 +1,648 @@
+﻿@using IA_AbansiBabayiSystemBlazor.Data.Models
+@using IA_AbansiBabayiSystemBlazor
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject TableDataService<Product> ProductService
+@inject TableDataService<ProductCategory> ProductCategoryService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+@layout Layout.ThemedLayout
+@page "/manageProductPage"
+
+<MudDialogProvider/>
+<div class="hero-content">
+    <MudGrid Class="p-6 ">
+        <!-- Left Side: Add Product -->
+        <MudItem xs="12" md="4">
+            <MudPaper Class="rounded-lg shadow-md" Style="padding: 2rem;">
+                <MudForm @ref="form">
+                    <MudText Typo="Typo.h5" Class="mb-3 font-bold text-green-700">Add New Product</MudText>
+
+                    <MudTextField T="string" @bind-Value="_newProduct.ProductName" Variant="Variant.Outlined"
+                                  Label="Name" Required="true" Class="mb-3" />
+
+                    <MudNumericField T="decimal?"
+                                     @bind-Value="_newProduct.ProductPrice"
+                                     Variant="Variant.Outlined"
+                                     Label="Price"
+                                     Required="true"
+                                     Format="0.00"
+                                     Class="mb-3"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="₱" />
+
+                    <MudAutocomplete T="ProductCategory"
+                                     @bind-Value="_selectedCategory"
+                                     Label="Product Category"
+                                     ToStringFunc="@(cat => cat?.ProductCategoryName)"
+                                     SearchFunc="SearchCategories"
+                                     Variant="Variant.Outlined"
+                                     Class="mb-3"
+                                     Dense="true" 
+                                     MaxItems="50"/>
+
+                    <MudTextField T="string" @bind-Value="_newProduct.ProductDescription" Variant="Variant.Outlined"
+                                  Label="Description" Lines="3" Class="mb-3" />
+
+                    @if (!string.IsNullOrEmpty(previewImageUrl))
+                    {
+                        <MudItem>
+                            <MudPaper Class="d-flex flex-column justify-space-between">
+                                <div style="flex-grow: 1; overflow: hidden; max-height: calc(100% - 4rem);">
+                                    <MudCardMedia Image="@previewImageUrl" Style=" object-fit: cover;" />
+                                </div>
+                                <div class="pa-2">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               FullWidth="true"
+                                               OnClick="RemoveImage">
+                                        Remove Image
+                                    </MudButton>
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                    else
+                    {
+                        <MudButton Style="padding: 1rem; border: dashed 0.2rem #d6d6d6; border-radius: 1.5rem; justify-content: center; align-items:center">
+                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+                                <ActivatorContent>
+                                    <div style="display: flex; flex-direction: column; align-items: center;">
+                                        <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Style="font-size: 5rem" />
+                                        <MudText Style="font-size: 1.5rem;">@("Upload your product image here")</MudText>
+                                    </div>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                        </MudButton>
+                    }
+
+                    <MudButton OnClick="AddProduct" Variant="Variant.Filled" Color="Color.Primary"
+                               Style="margin-block:1rem;">Add Product</MudButton>
+
+                    <MudButton OnClick="CancelAddProduct" Variant="Variant.Outlined" Color="Color.Secondary">
+                        Cancel
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Right Side: Manage Products -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="rounded-lg shadow-md" Style="padding:2rem; height:100%; display:flex; flex-direction:column;">
+                <MudText Typo="Typo.h5" Class="mb-3 font-bold text-blue-700">Manage Products</MudText>
+
+                <MudStack Row="true" Spacing="2" Class="mb-4">
+                        <MudTextField T="string" Value="_searchText" ValueChanged="OnSearchChanged" Immediate="true"
+                                      Placeholder="Search by Product Name"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Class="flex-grow" Style="margin-top:1rem;" />
+
+                        <MudSelect T="int?" Label="Category" Value="_selectedCategoryFilter" ValueChanged="OnCategoryChanged" Class="mb-3">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All</MudSelectItem>
+                        @foreach (var category in Categories)
+                        {
+                            <MudSelectItem T="int?" Value="@category.ProductCategoryId">
+                                @category.ProductCategoryName
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSwitch @bind-Value="_deleteMode" Label="Delete Switch" Color="@(_deleteMode ? Color.Error : Color.Success)"/>
+                </MudStack>
+
+                <div class="grid-container">
+                    <MudDataGrid T="Product" Items="@FilteredProducts" @ref="dataGrid"
+                                 Dense="true" Hover="true" Striped="true" ReadOnly="false"
+                                 Filterable="false" Virtualize="true"
+                                 EditMode="DataGridEditMode.Form"
+                                 EditTrigger="DataGridEditTrigger.Manual"
+                                 CommittedItemChanges="OpenEditDialog"
+                                 Style="overflow-x:auto;">
+
+                        <Columns>
+                            <!-- Image Column -->
+                            <TemplateColumn Title="Image" Width="80px" Editable="true">
+                                <CellTemplate>
+                                    @if (!string.IsNullOrEmpty(context.Item.ProductImagePath))
+                                    {
+                                            <img src="@context.Item.ProductImagePath"
+                                                 alt="@context.Item.ProductName"
+                                                 style="width:50px;height:50px;object-fit:cover;border-radius:4px;cursor:pointer;"/>
+                                    }
+                                    else
+                                    {
+                                        <div style="width:50px;height:50px;background:#eee;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" Color="Color.Default" />
+                                        </div>
+                                    }
+                                </CellTemplate>
+
+                                <EditTemplate>
+                                    <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+                                        @if (!string.IsNullOrEmpty(context.Item.ProductImagePath))
+                                        {
+                                            <img src="@context.Item.ProductImagePath"
+                                                 alt="@context.Item.ProductName"
+                                                 style="width:60px;height:60px;object-fit:cover;border-radius:6px;" />
+                                        }
+                                        <label class="mud-button mud-button-outlined mud-button-primary" style="cursor:pointer; width:100%;">
+                                            Upload Image
+                                            <InputFile OnChange="async (e) => await OnEditFileSelected(e, context.Item)" style="display:none;" />
+                                        </label>
+                                    </div>
+                                </EditTemplate>
+                            </TemplateColumn>
+
+                            <!-- Product Name Column -->
+                            <PropertyColumn T="Product" TProperty="string" Property="x => x.ProductName"
+                                            Title="Product Name" Width="200px" Editable="true">
+                                <CellTemplate>
+                                    <span style="font-weight:500; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; display:block;">
+                                        @context.Item.ProductName
+                                    </span>
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudTextField @bind-Value="context.Item.ProductName" Label="Product Name" Required="true" Variant="Variant.Outlined" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <!-- Category Column -->
+                            <TemplateColumn Title="Category" Editable="true">
+                                <CellTemplate>
+                                        @context.Item.ProductCategory?.ProductCategoryName
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudSelect T="int?" @bind-Value="context.Item.ProductCategoryId" Label="Category" Variant="Variant.Outlined">
+                                        @foreach (var cat in Categories)
+                                        {
+                                            <MudSelectItem T="int?" Value="@cat.ProductCategoryId">@cat.ProductCategoryName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </EditTemplate>
+                            </TemplateColumn>
+
+                            <!-- Price Column -->
+                            <PropertyColumn T="Product" TProperty="decimal?" Property="x => x.ProductPrice"
+                                            Title="Price" Width="120px" Editable="true">
+                                <CellTemplate>
+                                    @if (context.Item.ProductPrice.HasValue)
+                                    {
+                                        <text>₱@context.Item.ProductPrice.Value.ToString("N2")</text>
+                                    }
+                                    else
+                                    {
+                                        <text>-</text>
+                                    }
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudNumericField T="decimal?"
+                                                     @bind-Value="context.Item.ProductPrice"
+                                                     Variant="Variant.Outlined"
+                                                     Label="Price"
+                                                     Format="0.00"
+                                                     Adornment="Adornment.Start"
+                                                     AdornmentText="₱" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <!-- Description Column -->
+                            <PropertyColumn T="Product" TProperty="string" Property="x => x.ProductDescription"
+                                            Title="Description" Width="250px" Editable="true">
+                                <CellTemplate>
+                                    <span style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden; display:block;">
+                                        @context.Item.ProductDescription
+                                    </span>
+                                </CellTemplate>
+                                <EditTemplate>
+                                    <MudTextField @bind-Value="context.Item.ProductDescription"
+                                                  Label="Description"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="2" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <!-- Actions Column -->
+                            <TemplateColumn>
+                                <CellTemplate>
+                                    @if (_deleteMode)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => ConfirmDelete(context.Item))" />
+                                    }
+                                    else
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => OpenEditDialog(context.Item))" />
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+
+                        <PagerContent>
+                            <MudDataGridPager T="Product" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    // --- Services & References ---
+    private MudForm? form;
+    private MudDataGrid<Product>? dataGrid;
+    private HubConnection? _hubConnection;
+    private IList<IBrowserFile> _files = new List<IBrowserFile>();
+
+    // --- Data Collections ---
+    private List<Product> AllProducts = new();
+    private List<Product> FilteredProducts = new();
+    private List<ProductCategory> Categories = new();
+
+    // --- State Variables ---
+    private Product _newProduct = new();
+    private string previewImageUrl = string.Empty;
+    private string _tempUploadedFilePath = string.Empty;
+    private string _searchText = string.Empty;
+    private int? _selectedCategoryFilter;
+    private bool _deleteMode = false;
+
+    // --- Edit Mode Tracking ---
+    private Dictionary<int, string> _oldImagePaths = new();
+    private Dictionary<int, string> _tempEditFiles = new();
+
+    private ProductCategory? _selectedCategory;
+
+    private Task<IEnumerable<ProductCategory>> SearchCategories(string value, CancellationToken cancellationToken)
+    {
+        IEnumerable<ProductCategory> result;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            result = Categories;
+        }
+        else
+        {
+            result = Categories
+                .Where(c => c.ProductCategoryName != null &&
+                    c.ProductCategoryName.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(result);
+    }
+
+    // --- Lifecycle ---
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/autoUpdateHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReceiveUpdate", async (tableName) =>
+        {
+            if (tableName == nameof(Product))
+            {
+                await LoadDataAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await ProductCategoryService.LoadDataAsync();
+        await ProductService.LoadDataAsync(q => q.Include(p => p.ProductCategory));
+
+        Categories = ProductCategoryService.Data.ToList();
+        AllProducts = ProductService.Data.ToList();
+        FilteredProducts = AllProducts.ToList();
+    }
+
+    // --- Filtering ---
+    private void ApplyFilters()
+    {
+        var query = AllProducts.AsEnumerable();
+
+        if (_selectedCategoryFilter.HasValue)
+        {
+            query = query.Where(p => p.ProductCategoryId == _selectedCategoryFilter.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            query = query.Where(p =>
+                !string.IsNullOrEmpty(p.ProductName) &&
+                p.ProductName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+        }
+
+        FilteredProducts = query.ToList();
+        StateHasChanged();
+    }
+
+    // --- File Handling (Fixed based on your example) ---
+    private async void UploadFiles(IBrowserFile file)
+    {
+        _files.Clear();
+        _files.Add(file);
+
+        try
+        {
+            // Use productImages folder instead of eventImages
+            var uploadsFolder = Path.Combine(Environment.CurrentDirectory, "wwwroot", "uploads", "productImages");
+            Directory.CreateDirectory(uploadsFolder);
+
+            // Build custom file name format: Guid_ProductName_Category_FileName
+            var productName = _newProduct?.ProductName?.Replace(" ", "_") ?? "Unnamed";
+            var categoryName = _selectedCategory?.ProductCategoryName?.Replace(" ", "_") ?? "Uncategorized";
+            var fileName = $"{Guid.NewGuid()}_Product_{productName}_{categoryName}{Path.GetExtension(file.Name)}";
+
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var fs = File.Create(filePath);
+            await stream.CopyToAsync(fs);
+
+            // Update image paths
+            previewImageUrl = $"/uploads/productImages/{fileName}";
+            _tempUploadedFilePath = previewImageUrl;
+
+            Snackbar.Add("Product image uploaded successfully!", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error uploading image: {ex.InnerException}", Severity.Error);
+        }
+    }
+
+    private void RemoveImage()
+    {
+        if (!string.IsNullOrEmpty(previewImageUrl) && !previewImageUrl.EndsWith("no-image.png"))
+        {
+            var tempFile = Path.Combine(Environment.CurrentDirectory, "wwwroot", previewImageUrl.TrimStart('/'));
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+
+        previewImageUrl = string.Empty;
+        _tempUploadedFilePath = string.Empty;
+        StateHasChanged();
+    }
+
+    // --- Product CRUD ---
+    private async Task AddProduct()
+    {
+        await form!.Validate();
+        if (!form.IsValid)
+        {
+            Snackbar.Add("Please fill in all required fields!", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_newProduct.ProductName))
+        {
+            Snackbar.Add("Product name is required!", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Set the ProductCategoryId from the selected category
+            if (_selectedCategory != null)
+            {
+                _newProduct.ProductCategoryId = _selectedCategory.ProductCategoryId;
+            }
+
+            var productToAdd = new Product
+            {
+                ProductName = _newProduct.ProductName,
+                ProductPrice = _newProduct.ProductPrice,
+                ProductDescription = _newProduct.ProductDescription,
+                ProductCategoryId = _newProduct.ProductCategoryId,
+                ProductImagePath = previewImageUrl
+            };
+
+            await ProductService.Add(productToAdd);
+            Snackbar.Add($"Product '{productToAdd.ProductName}' added successfully!", Severity.Success);
+
+            await LoadDataAsync();
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding product: {ex.InnerException}", Severity.Error);
+        }
+    }
+
+    private async Task OpenEditDialog(Product product)
+    {
+        var parameters = new DialogParameters
+        {
+            ["EditingProduct"] = product,
+            ["Categories"] = Categories
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = DialogService.Show<EditProductDialog>("Edit Product", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            // ✅ Delete old image if a new one was uploaded
+            if (_oldImagePaths.TryGetValue(product.ProductId, out var oldImagePath) &&
+                _tempEditFiles.ContainsKey(product.ProductId))
+            {
+                var oldFilePath = Path.Combine(Environment.CurrentDirectory, "wwwroot", oldImagePath.TrimStart('/'));
+                if (File.Exists(oldFilePath))
+                    File.Delete(oldFilePath);
+
+                _oldImagePaths.Remove(product.ProductId);
+                _tempEditFiles.Remove(product.ProductId);
+            }
+
+            await LoadDataAsync();
+            Snackbar.Add("Product updated successfully!", Severity.Success);
+        }
+        else
+        {
+            // ❌ If edit canceled, delete temporary new image
+            if (_tempEditFiles.TryGetValue(product.ProductId, out var tempPath))
+            {
+                var tempFile = Path.Combine(Environment.CurrentDirectory, "wwwroot", tempPath.TrimStart('/'));
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+
+                _tempEditFiles.Remove(product.ProductId);
+            }
+
+            _oldImagePaths.Remove(product.ProductId);
+        }
+    }
+
+
+    private async Task ConfirmDelete(Product item)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete '{item.ProductName}'?",
+            yesText: "Yes",
+            cancelText: "Cancel");
+
+        if (result != true) return;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(item.ProductImagePath) && item.ProductImagePath != "/Products/no-image.png")
+            {
+                var filePath = Path.Combine(Environment.CurrentDirectory, "wwwroot", item.ProductImagePath.TrimStart('/'));
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+
+            await ProductService.Delete(item);
+            await LoadDataAsync();
+
+            Snackbar.Add($"'{item.ProductName}' deleted successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting product: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnEditFileSelected(InputFileChangeEventArgs e, Product product)
+    {
+        var file = e.File;
+
+        // Folder for product images
+        var uploadsPath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "uploads", "productImages");
+        Directory.CreateDirectory(uploadsPath);
+
+        // New custom name for edit
+        var fileName = $"{Guid.NewGuid()}_Product_{product.ProductName?.Replace(" ", "_")}_{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(file.Name)}";
+        var filePath = Path.Combine(uploadsPath, fileName);
+
+        await using var stream = File.Create(filePath);
+        await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+
+        // Track old image if not already recorded
+        if (!_oldImagePaths.ContainsKey(product.ProductId))
+            _oldImagePaths[product.ProductId] = product.ProductImagePath ?? string.Empty;
+
+        // Update preview path
+        product.ProductImagePath = $"/uploads/productImages/{fileName}";
+
+        // Track this new temporary file (for deletion on cancel)
+        _tempEditFiles[product.ProductId] = product.ProductImagePath;
+
+        Snackbar.Add($"New image selected for '{product.ProductName}'. Remember to save changes!", Severity.Info);
+        StateHasChanged();
+    }
+
+
+    // --- Form Management ---
+    private void ResetForm()
+    {
+        _newProduct = new Product();
+        _selectedCategory = null;
+        previewImageUrl = string.Empty;
+        _tempUploadedFilePath = string.Empty;
+        _files.Clear();
+    }
+
+    private async Task CancelAddProduct()
+    {
+        if (!string.IsNullOrEmpty(previewImageUrl) && !previewImageUrl.EndsWith("no-image.png"))
+        {
+            var tempFile = Path.Combine(Environment.CurrentDirectory, "wwwroot", previewImageUrl.TrimStart('/'));
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+
+        ResetForm();
+        StateHasChanged();
+    }
+
+    // --- Edit Mode Management ---
+    private void OnEditStarted(Product product)
+    {
+        if (!_oldImagePaths.ContainsKey(product.ProductId))
+            _oldImagePaths[product.ProductId] = product.ProductImagePath ?? string.Empty;
+
+        // Ensure the product is properly tracked for editing
+        if (dataGrid != null)
+        {
+            // This ensures the data grid knows which item is being edited
+            StateHasChanged();
+        }
+    }
+
+    private void OnEditCancelled(Product product)
+    {
+        if (_oldImagePaths.TryGetValue(product.ProductId, out var oldPath))
+            product.ProductImagePath = oldPath;
+
+        if (_tempEditFiles.TryGetValue(product.ProductId, out var tempPath))
+        {
+            var tempFile = Path.Combine(Environment.CurrentDirectory, "wwwroot", tempPath.TrimStart('/'));
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+
+            _tempEditFiles.Remove(product.ProductId);
+        }
+
+        _oldImagePaths.Remove(product.ProductId);
+    }
+
+    private void ToggleDeleteMode() => _deleteMode = !_deleteMode;
+
+    // --- Event Handlers ---
+    private async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCategoryChanged(int? value)
+    {
+        _selectedCategoryFilter = value;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            try
+            {
+                await _hubConnection.StopAsync();
+                await _hubConnection.DisposeAsync();
+            }
+            catch
+            {
+                // Swallow exceptions to avoid breaking disposal
+            }
+        }
+    }
+}
