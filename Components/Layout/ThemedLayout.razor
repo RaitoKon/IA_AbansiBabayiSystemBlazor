@@ -14,7 +14,7 @@
 @inject ILogger<ThemedLayout> Logger
 @inject UserManager<ApplicationUser> UserManager
 
-@* @attribute [Authorize(Roles = "Admin, Troop Leader, Scout")] *@
+@attribute [Authorize(Roles = "Admin, Troop Leader, Scout")]
 
 <MudThemeProvider Theme="AbansiBabayiTheme.AbansiBabayiCustomTheme" />
    <MudSnackbarProvider MaxDisplayedSnackbars="3" Position="SnackbarPosition.TopCenter" />
@@ -31,7 +31,7 @@
                 </div>
             </div>
 
-@*         <AuthorizeView Roles="Admin"> *@
+        <AuthorizeView Roles="Admin">
         <MudNavLink Href="/ManagementPage" Icon="@Icons.Material.Filled.Dashboard">Main Dashboard</MudNavLink>
 
 
@@ -68,7 +68,7 @@
                     </MudNavMenu>
                 </MudPaper>
 
-@*            </AuthorizeView> *@
+           </AuthorizeView>
 
            <AuthorizeView Roles="Troop Leader">
 

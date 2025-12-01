@@ -1,5 +1,6 @@
 ﻿@page "/TransactionHistoryPage"
 @layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
 
 @using IA_AbansiBabayiSystemBlazor.Data.Models
 @using Microsoft.AspNetCore.SignalR.Client

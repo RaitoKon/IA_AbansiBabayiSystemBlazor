@@ -13,6 +13,7 @@
 
 @layout Layout.ThemedLayout
 @page "/manageProductStockPage"
+@attribute [Authorize(Roles = "Admin")]
 
 <MudDialogProvider />
 <div class="hero-content">

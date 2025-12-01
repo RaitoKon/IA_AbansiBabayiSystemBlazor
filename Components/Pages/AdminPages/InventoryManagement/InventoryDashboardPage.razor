@@ -5,6 +5,7 @@
 
 @page "/inventoryDashboardPage"
 @layout Layout.ThemedLayout
+@attribute [Authorize(Roles = "Admin")]
 
 @inject NavigationManager NavigationManager
 @inject TableDataService<Transaction> TransactionService
