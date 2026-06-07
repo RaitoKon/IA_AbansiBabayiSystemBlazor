@@ -1,18 +1,19 @@
 # AbansiBabayi
 
-A web-based management system developed for the Iloilo Girl Scout Council.
+AbansiBabayi is a web-based management system developed for the Iloilo Girl Scout Council as a Bachelor of Science in Information Technology thesis project.
+
+The system was designed to digitize and streamline the council's administrative operations by centralizing member registration, event management, approval workflows, and merchandise transactions into a single platform.
 
 ## Problem
 
-The council manually managed registrations,
-events, memberships, and merchandise tracking.
+The Iloilo Girl Scout Council relied heavily on manual processes for managing Scout registrations, troop records, event participation, and merchandise tracking. These processes were time-consuming, difficult to monitor, and prone to record inconsistencies.
 
 ## Solution
 
 A centralized platform allowing:
 
-- Scout registration
-- Troop leader management
+- Scout registration and management
+- Troop leader registration and management
 - Event publication
 - Event registration
 - POS system
